@@ -67,7 +67,7 @@ the solves. Details: [docs/existing_port_review.md](docs/existing_port_review.md
 ## 🚀 Getting started
 
 ```bash
-git clone https://github.com/<your-username>/gstatsim-gpu.git
+git clone https://github.com/alexislanier0420-tech/gstatsim-gpu.git
 cd gstatsim-gpu
 conda env create -f environment.yml
 conda activate gstatsim-gpu
