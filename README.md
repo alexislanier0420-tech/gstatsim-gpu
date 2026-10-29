@@ -43,6 +43,7 @@ the GPU but fails on the first linear-algebra call.
 | `benchmarks/compare_outputs.py` | CPU-vs-GPU output comparison against a set tolerance |
 | `scripts/env_report.py` | Phase 0 hardware/software report and GPU smoke test |
 | `scripts/hpg/env_report.sbatch` | Same report on a HiPerGator GPU node |
+| `docs/hipergator.md` | Course allocation limits, setup and job submission on HiPerGator |
 | `docs/existing_port_review.md` | Review of the prior CuPy port and early CPU profile |
 | `figures/` | Method figure (Rubble Glacier study area) |
 

@@ -1,0 +1,3 @@
+# Shell scripts run on HiPerGator; CRLF line endings would break them.
+*.sh eol=lf
+*.sbatch eol=lf
