@@ -1,13 +1,13 @@
 #!/bin/bash
 # Phase 0 environment report on a HiPerGator L4 GPU node.
-# Set ACCOUNT and QOS to the course group (the name under /blue/, e.g. /blue/<course>).
+# Course group gly4930 (account = QOS = course group).
 # Submit from the repo root:  mkdir -p logs && sbatch scripts/hpg/env_report.sbatch
 # (SLURM won't create logs/ itself; without it the job's output is lost.)
 #SBATCH --job-name=gsgpu_env
-#SBATCH --account=CHANGE_ME
-#SBATCH --qos=CHANGE_ME
-# Courses may use ONLY L4 GPUs. The burst QOS (<group>-b) cannot request GPUs.
-# Check that the partition holds L4s with `slurmInfo`.
+#SBATCH --account=gly4930
+#SBATCH --qos=gly4930
+# Courses may use ONLY L4 GPUs. The burst QOS (gly4930-b) cannot request GPUs.
+# hpg-turin = L4 partition (confirmed with slurmInfo, 2026-10-29).
 #SBATCH --partition=hpg-turin
 #SBATCH --gpus=l4:1
 #SBATCH --cpus-per-task=4

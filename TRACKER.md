@@ -12,7 +12,8 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 - [x] Tutorial 3 runs through the harness (500-point smoke run, laptop)
 - [x] Prior work reviewed: [docs/existing_port_review.md](docs/existing_port_review.md)
 - [ ] Confirm deliverable expectations with instructor (see open questions)
-- [ ] HiPerGator: set account/QOS (course group) in `scripts/hpg/env_report.sbatch`, build env, run report on an L4 ([docs/hipergator.md](docs/hipergator.md))
+- [x] HiPerGator account/QOS set to `gly4930` in `scripts/hpg/env_report.sbatch`
+- [ ] HiPerGator: confirm L4 partition, copy repo, build env, run report on an L4 ([docs/hipergator.md](docs/hipergator.md))
 - [ ] Pick a small, repeatable Tutorial 4 (SGS) case
 
 ### Phase 1: CPU baseline (Nov 2 – 8) · Gate 2 Nov 8
@@ -38,7 +39,7 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 |---|---|---|
 | Is the deliverable a report + code, or must it be a PR to GStatSim? | Instructor | open |
 | Does the project have to use custom CUDA, or is CuPy acceptable? | Instructor | open |
-| Which HiPerGator account/QOS and GPU partition can the class use? | RC orientation | Account = QOS = course group; L4 GPUs only. Still need the group name (TA) and to confirm the L4 partition (`slurmInfo`) |
+| Which HiPerGator account/QOS and GPU partition can the class use? | RC orientation | Resolved: `gly4930`, L4s on `hpg-turin`, course cap 2 GPUs |
 | May we reuse code from badger-lord/gstatsim_gpu (no license)? Contact author or reimplement | Author | open; plan to reimplement |
 | Should the Rubble Glacier data also be benchmarked, or only the tutorial data? | Instructor | open |
 | Is SGS in scope, or only a feasibility discussion? | Instructor | open |
@@ -62,7 +63,8 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 
 ## Risks to watch
 - Data: `glacier_lab1.nc` may still hold the Marie Byrd Land crop; check extent before using lab outputs.
-- Laptop GPU has 8 GiB, the L4 24 GB; size batches for the laptop first.
+- Laptop GPU has 8 GiB, the L4 23 GB; size batches for the laptop first.
+- Only 2 L4s for the whole course: GPU jobs may queue, especially near deadlines. Run final benchmarks early.
 - Course shares 32 cores / 256 GB: keep CPU baseline jobs small (≤ 8 cores) and short.
 - HiPerGator storage isn't backed up and course accounts are deleted after the semester.
 - A GPU speedup over pandas-bound GStatSim may mostly measure Python overhead; report against an optimized CPU path too.
