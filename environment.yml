@@ -1,0 +1,26 @@
+# Development environment. Kept separate from the course env (geostats2026) so
+# installing CuPy or test tools here can't break the labs.
+#   conda env create -f environment.yml && conda activate gstatsim-gpu
+name: gstatsim-gpu
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy=2.2  # CuPy 14 needs NumPy 2
+  - pandas=2.2
+  - scipy=1.15
+  - scikit-learn=1.6
+  # MKL 2026.1 crashes SciPy 1.15's LAPACK calls on Windows (0xc06d007f); use OpenBLAS.
+  - libblas=*=*openblas
+  - tqdm
+  - psutil
+  - pytest
+  - pip
+  - pip:
+      - gstatsim==1.1.5
+      - scikit-gstat
+      - -e .
+      # GPU: CuPy plus the CUDA libraries it loads (cuBLAS, cuSOLVER...).
+      # Without [ctk] CuPy finds the device but fails on the first matrix op.
+      # Drop the next line on a machine without an NVIDIA GPU.
+      - cupy-cuda12x[ctk]==14.2.0

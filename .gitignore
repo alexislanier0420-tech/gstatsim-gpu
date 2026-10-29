@@ -1,0 +1,10 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.venv/
+logs/
+# Benchmark records stay local until reviewed; copy the ones the report cites into docs/.
+results/
+/data/
+*.nc
+*.npy

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gstatsim-accel"
+version = "0.1.0"
+description = "Opt-in CPU/GPU backends for GStatSim kriging and simulation"
+requires-python = ">=3.10"
+dependencies = [
+    # The CPU backend is GStatSim itself; record the installed version in every benchmark.
+    "gstatsim>=1.1.5",
+    "numpy>=1.24",
+    "pandas>=1.5",
+    "scipy>=1.10",
+    "scikit-learn>=1.2",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+# Pick the wheel matching the CUDA major version from `nvidia-smi` (CUDA 12.x shown).
+# [ctk] pulls in cuBLAS/cuSOLVER; without it CuPy sees the GPU but can't solve.
+gpu = ["cupy-cuda12x[ctk]>=13.4"]
+bench = ["scikit-gstat", "psutil"]
+dev = ["pytest>=7"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
