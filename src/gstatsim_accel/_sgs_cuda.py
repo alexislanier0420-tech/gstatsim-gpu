@@ -54,7 +54,9 @@ extern "C" __global__ void sgs_kernel(
     const double radius, const int oct_count, const int ordinary,
     const double* vparams,                           // (C, 8) per variogram: vtype, nugget, sill, R00, R01, R10, R11, -
     int* labels, const int cluster_mode,             // (S, L) cluster of each point (cluster_sgs); 0 = one variogram
-    const double global_mean)
+    const double global_mean,
+    const double* sec, const int mm1,                // (M, 3) nearest secondary x, y, value per node (cosim_mm1)
+    const double rho, const double var_1, const double mean_2, const double var_2)
 {
     const int s = blockIdx.x, tid = threadIdx.x, bs = blockDim.x;
     const int lane = tid & 31, warp = tid >> 5, nwarps = (bs + 31) >> 5;
@@ -168,41 +170,49 @@ extern "C" __global__ void sgs_kernel(
         const double nug = vp[1], sill = vp[2], c_struct = sill - nug;
         const double R00 = vp[3], R01 = vp[4], R10 = vp[5], R11 = vp[6];
 
-        // 4. Kriging system (Covariance.make_covariance_matrix / _array), rotated coordinates
+        // 4. Kriging system (Covariance.make_covariance_matrix / _array), rotated coordinates.
+        //    cosim_mm1 adds the nearest secondary point as one more row (index m).
+        const int mt = m + mm1;
         const double prx = px * R00 + py * R10, pry = px * R01 + py * R11;
-        for (int q = tid; q < m; q += bs) {
-            const int j = nb[q];
-            const double x = X[j], y = Y[j];
-            rx[q] = x * R00 + y * R10; ry[q] = x * R01 + y * R11; zz[q] = Z[j];
+        for (int q = tid; q < mt; q += bs) {
+            double x, y;
+            if (q < m) { const int j = nb[q]; x = X[j]; y = Y[j]; zz[q] = Z[j]; }
+            else { x = sec[3 * z]; y = sec[3 * z + 1]; zz[q] = sec[3 * z + 2]; }
+            rx[q] = x * R00 + y * R10; ry[q] = x * R01 + y * R11;
             const double e0 = rx[q] - prx, e1 = ry[q] - pry;
-            c0[q] = covar(sqrt(e0 * e0 + e1 * e1), vtype, c_struct);
+            c0[q] = covar(sqrt(e0 * e0 + e1 * e1), vtype, c_struct) * (q < m ? 1.0 : rho);
             y0[q] = c0[q]; y1[q] = 1.0;
         }
         __syncthreads();
-        for (int e = tid; e < m * m; e += bs) {
-            const int a = e / m, b = e % m;
+        for (int e = tid; e < mt * mt; e += bs) {
+            const int a = e / mt, b = e % mt;
             if (b > a) continue;
-            const double d0 = rx[a] - rx[b], d1 = ry[a] - ry[b];
-            A[a * (a + 1) / 2 + b] = (a == b) ? sill : covar(sqrt(d0 * d0 + d1 * d1), vtype, c_struct);
+            double v;
+            if (a == b) v = (a < m) ? sill : 1.0;             // Markov model 1: unit secondary variance
+            else {
+                const double d0 = rx[a] - rx[b], d1 = ry[a] - ry[b];
+                v = covar(sqrt(d0 * d0 + d1 * d1), vtype, c_struct) * (a < m ? 1.0 : rho);
+            }
+            A[a * (a + 1) / 2 + b] = v;
         }
         __syncthreads();
 
         // 5. Cholesky factorization C = L L^T, in place, one barrier per column:
         //    step k updates the trailing block with column k unscaled (divided
         //    by the pivot) while column k-1, which step k doesn't read, is scaled.
-        for (int k = 0; k <= m; ++k) {
+        for (int k = 0; k <= mt; ++k) {
             if (k > 0) {                                   // finish column k-1
                 const int kk1 = (k - 1) * k / 2 + (k - 1);
                 double p1 = A[kk1];
                 if (p1 <= 0.0) { if (tid == 0) bad_sh = 1; p1 = 1.0; }
                 const double piv = sqrt(p1);
-                for (int a = k + tid; a < m; a += bs) A[a * (a + 1) / 2 + k - 1] /= piv;
+                for (int a = k + tid; a < mt; a += bs) A[a * (a + 1) / 2 + k - 1] /= piv;
                 if (tid == 0) A[kk1] = piv;
             }
-            if (k < m) {
+            if (k < mt) {
                 const double p = A[k * (k + 1) / 2 + k];
                 const double inv_p = p > 0.0 ? 1.0 / p : 1.0;
-                for (int a = k + 1 + warp; a < m; a += nwarps) {   // one warp per row
+                for (int a = k + 1 + warp; a < mt; a += nwarps) {   // one warp per row
                     const int ra = a * (a + 1) / 2;
                     const double lak = A[ra + k] * inv_p;
                     for (int b = k + 1 + lane; b <= a; b += 32) A[ra + b] -= lak * A[b * (b + 1) / 2 + k];
@@ -215,18 +225,18 @@ extern "C" __global__ void sgs_kernel(
         //    and a dependency at every step, so one warp does it with cheap
         //    warp barriers instead of block-wide ones.
         if (warp == 0) {
-            for (int k = 0; k < m; ++k) {                 // forward: L y = rhs
+            for (int k = 0; k < mt; ++k) {                 // forward: L y = rhs
                 const double lkk = A[k * (k + 1) / 2 + k];
                 const double v0 = y0[k] / lkk, v1 = y1[k] / lkk;
                 __syncwarp();
                 if (lane == 0) { y0[k] = v0; y1[k] = v1; }
-                for (int a = k + 1 + lane; a < m; a += 32) {
+                for (int a = k + 1 + lane; a < mt; a += 32) {
                     const double l = A[a * (a + 1) / 2 + k];
                     y0[a] -= l * v0; y1[a] -= l * v1;
                 }
                 __syncwarp();
             }
-            for (int k = m - 1; k >= 0; --k) {            // backward: L^T x = y
+            for (int k = mt - 1; k >= 0; --k) {            // backward: L^T x = y
                 const int row = k * (k + 1) / 2;
                 const double v0 = y0[k] / A[row + k], v1 = y1[k] / A[row + k];
                 __syncwarp();
@@ -240,7 +250,14 @@ extern "C" __global__ void sgs_kernel(
         // 7. Estimate, variance and the simulated value (skrige_sgs / okrige_sgs)
         if (tid == 0) {
             double est, var = sill;
-            if (ordinary) {
+            if (mm1) {
+                // cosim_mm1: primary terms scaled by 1/sqrt(var_1) (GStatSim's
+                // formula), plus the secondary term; sill = var_1 here.
+                est = 0.0;
+                for (int q = 0; q < m; ++q) est += y0[q] * (zz[q] - global_mean) / sqrt(var_1);
+                est = global_mean + est + y0[m] * (zz[m] - mean_2) / sqrt(var_2);
+                for (int q = 0; q < mt; ++q) var -= y0[q] * c0[q];
+            } else if (ordinary) {
                 // Bordered system via the Schur complement: w = C^-1 c0 - mu C^-1 1, sum(w) = 1
                 double s0 = 0.0, s1 = 0.0, mean = 0.0;
                 for (int q = 0; q < m; ++q) { s0 += y0[q]; s1 += y1[q]; mean += zz[q]; }
@@ -303,7 +320,8 @@ def _params(vario):
 
 
 def _run(points, X, Y, Z, labels, varios, num_points, radius, ordinary, seeds, global_mean,
-         copy_datum, cluster_mode, threads):
+         copy_datum, cluster_mode, threads, mm1=None):
+    """mm1: None, or (secondary (M, 3) array, rho, var_1, mean_2, var_2) for cosim_mm1."""
     import cupy as cp
 
     S, M, N = len(seeds), len(points), len(X)
@@ -337,7 +355,12 @@ def _run(points, X, Y, Z, labels, varios, num_points, radius, ordinary, seeds, g
     out = cp.empty((S, M))
     flags = cp.zeros(S, dtype=cp.int32)
 
-    maxk = 32 * -(-8 * oct_count // 32)  # round up so few kernel variants get compiled
+    K = 8 * oct_count
+    # Shared memory must hold K neighbors (+1 secondary point for cosim_mm1). Round
+    # up so few variants get compiled, but never past 96 (the 48 KB limit) or
+    # the exact size needed.
+    maxk = min(32 * -(-K // 32), 96) if mm1 is None else K + 1
+    sec, rho, var_1, mean_2, var_2 = mm1 if mm1 is not None else (np.zeros((M, 3)), 0.0, 1.0, 0.0, 1.0)
     _kernel(maxk)(
         (S,), (threads,),
         (Xa, Ya, Za, cp.asarray(np.ascontiguousarray(points, dtype=np.float64)),
@@ -345,7 +368,9 @@ def _run(points, X, Y, Z, labels, varios, num_points, radius, ordinary, seeds, g
          cp.empty((S, L)), cp.empty((S, L), dtype=cp.int32), cp.empty((S, L), dtype=cp.int32), out, flags,
          np.int32(N), np.int32(M), np.int32(L), np.float64(radius), np.int32(oct_count),
          np.int32(bool(ordinary)), cp.asarray([_params(v) for v in varios], dtype=cp.float64),
-         La, np.int32(bool(cluster_mode)), np.float64(global_mean)),
+         La, np.int32(bool(cluster_mode)), np.float64(global_mean),
+         cp.asarray(np.ascontiguousarray(sec, dtype=np.float64)), np.int32(mm1 is not None),
+         np.float64(rho), np.float64(var_1), np.float64(mean_2), np.float64(var_2)),
     )
     f = int(flags.max().get()) if S else 0
     if f & 1:
@@ -371,3 +396,24 @@ def cluster_sgs_ensemble(points, X, Y, Z, labels, varios, num_points, radius, se
     # cluster_sgs always copies a datum under a node, whatever the nugget.
     return _run(points, X, Y, Z, labels, varios, num_points, radius, False, seeds, global_mean,
                 copy_datum=True, cluster_mode=True, threads=threads)
+
+
+def cosim_mm1_ensemble(points, X1, Y1, Z1, X2, Y2, Z2, vario, num_points, radius, corrcoef, seeds,
+                       threads=256):
+    """cosim_mm1 (SGS with the nearest secondary point, Markov model 1): one
+    realization per seed."""
+    import cupy as cp
+
+    from ._batched import mm1_stats, nearest_secondary
+
+    _check([vario], num_points)
+    mean_1, var_1, mean_2, var_2 = mm1_stats(Z1, Z2)
+    # GStatSim replaces the sill with the primary variance (vario[4] = np.var(Z1)).
+    vario = list(vario[:4]) + [var_1] + list(vario[5:])
+    # The secondary data never change, so each node's nearest one is found up front.
+    j = nearest_secondary(cp, points, X2, Y2)
+    sec = np.column_stack([np.asarray(X2)[j], np.asarray(Y2)[j], np.asarray(Z2)[j]])
+    # cosim_mm1 always copies a datum under a node, whatever the nugget.
+    return _run(points, X1, Y1, Z1, np.zeros(len(X1)), [vario], num_points, radius, False, seeds,
+                mean_1, copy_datum=True, cluster_mode=False, threads=threads,
+                mm1=(sec, float(corrcoef), var_1, mean_2, var_2))

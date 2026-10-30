@@ -3,7 +3,7 @@
 GPU versions of the chapters of the [GStatSim Jupyter Book](https://gatorglaciology.github.io/gstatsimbook/)
 (Gator Glaciology Lab) whose slow steps `gstatsim_accel` supports. Each notebook is
 the book's own chapter, same text, data and code, with only GStatSim's kriging and
-SGS calls replaced by `kriging.predict` / `simulation.sgs` (`backend=BACKEND`). Every
+SGS calls replaced by their `gstatsim_accel` equivalents (`backend=BACKEND`). Every
 replaced cell is timed with `%%time` and shows the CPU time recorded in the
 published book.
 
@@ -15,16 +15,15 @@ published book.
 | [6 Non-stationary SGS, example 1](6_non-stationary_SGS_example1_GPU.ipynb) | 2 cluster SGS (k-means, 3 clusters) | 6 min 00 s | 28.7 s |
 | [7 Non-stationary SGS, example 2](7_non-stationary_SGS_example2_GPU.ipynb) | 2 cluster SGS (adaptive partitioning) | 6 min 19 s | 28.6 s |
 | [8 Interpolation with a trend](8_interpolation_with_a_trend_GPU.ipynb) | kriging + SGS (+ RBF trend, CPU) | 5 min 23 s | 20.5 s |
+| [9 Cokriging and cosimulation (MM1)](9_cokriging_and_cosimulation_MM1_GPU.ipynb) | cokriging + cosimulation | 6 min 41 s | 20.9 s |
 
 GPU times include about 3 s of one-time GPU start-up in each notebook's first call.
 The book's times come from a different computer, so compare the ratios, not the exact numbers.
 
-**Not converted:**
-- Chapters 1–2 (variograms) run in seconds already.
-- Chapter 9 needs `cokrige_mm1`/`cosim_mm1`, which have no GPU version yet.
+**Not converted:** chapters 1–2 (variograms), which run in seconds already.
 
 **Changes beyond the swapped calls:**
-- Chapters 4–7 define variograms without a model type, which only the first
+- Chapters 4–7 and 9 define variograms without a model type, which only the first
   GStatSim (exponential-only) accepted. The GPU versions add `'Exponential'`, the
   model those chapters fit.
 - Chapter 4's two extra realizations run in one `simulation.realizations` call
@@ -35,4 +34,4 @@ README). The first cell downloads the book's Greenland data and its `plot_utils.
 (pinned to book commit `9365b2d`) if they're missing.
 
 **Regenerating** after the book changes:
-`python scripts/make_book_gpu_notebooks.py path/to/gstatsimbook`
+`python scripts/make_book_gpu_notebooks.py path/to/gstatsimbook` (add `--only 9` to rebuild one chapter; rebuilt notebooks need running again to get their outputs back)

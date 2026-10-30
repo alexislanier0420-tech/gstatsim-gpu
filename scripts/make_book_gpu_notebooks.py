@@ -26,6 +26,7 @@ CHAPTERS = {
     "6_non-stationary_SGS_example1.ipynb": "Non-stationary SGS, example 1",
     "7_non-stationary_SGS_example2.ipynb": "Non-stationary SGS, example 2",
     "8_interpolation_with_a_trend.ipynb": "Interpolation with a trend",
+    "9_cokriging_and_cosimulation_MM1.ipynb": "Cokriging and cosimulation with MM1",
 }
 BOOK_URL = "https://gatorglaciology.github.io/gstatsimbook/"
 BOOK_COMMIT = "9365b2d4ef645d6f6bc1362dbe1221b52b714e4b"  # gstatsimbook commit these notebooks were made from
@@ -35,6 +36,8 @@ CALL = re.compile(r"gs\.Interpolation\.(skrige|okrige|skrige_sgs|okrige_sgs)\("
                   r"(\w+), (\w+), '(\w+)', '(\w+)', '(\w+)', (\w+), (\w+), (\w+)\)")
 CLUSTER_CALL = re.compile(r"gs\.Interpolation\.cluster_sgs\((\w+), (\w+), '(\w+)', '(\w+)', '(\w+)', "
                           r"'(\w+)', (\w+), (\w+), (\w+)\)")
+MM1_CALL = re.compile(r"gs\.Interpolation\.(cokrige_mm1|cosim_mm1)\((\w+), (\w+), '(\w+)', '(\w+)', '(\w+)',"
+                      r"\s*(\w+), '(\w+)', '(\w+)', '(\w+)', (\w+), (\w+), (\w+), (\w+)\)")
 PROGRESS = re.compile(r"(\d+)/(\d+) \[(\d+):(\d+)<")
 
 SETUP = '''\
@@ -73,6 +76,14 @@ def replace_cluster_call(m: re.Match) -> str:
             f"cluster_col='{kk}', xx='{xx}', yy='{yy}', zz='{zz}', backend=BACKEND)")
 
 
+def replace_mm1_call(m: re.Match) -> str:
+    func, grid, df1, xx, yy, zz, df2, xx2, yy2, zz2, k, vario, rad, rho = m.groups()
+    module = "kriging" if func == "cokrige_mm1" else "simulation"
+    return (f"{module}.{func}({df1}, {df2}, {grid}, {vario}, num_points={k}, radius={rad}, "
+            f"corrcoef={rho},\n    xx='{xx}', yy='{yy}', zz='{zz}', xx2='{xx2}', yy2='{yy2}', zz2='{zz2}', "
+            "backend=BACKEND)")
+
+
 def book_times(cell) -> list[str]:
     """Wall times of GStatSim's progress bars in the book's executed cell."""
     text = "".join("".join(o.get("text", "")) for o in cell.get("outputs", []))
@@ -101,6 +112,7 @@ def convert(src: Path, dst: Path, title: str) -> None:
             src_code = cell.source
             new = CALL.sub(replace_call, src_code)
             new = CLUSTER_CALL.sub(replace_cluster_call, new)
+            new = MM1_CALL.sub(replace_mm1_call, new)
             # Several chapters predate GStatSim's model-type entry (the first
             # GStatSim was exponential-only); today's needs it.
             new = re.sub(r"(vario\d* = \[azimuth, nugget, major_range, minor_range, sill)\]",
@@ -119,7 +131,7 @@ def convert(src: Path, dst: Path, title: str) -> None:
                     "# simulate multiple random realizations\n"
                     "# GPU version: both realizations in one call, simulated side by side\n"
                     f"sim2, sim3 = simulation.realizations({args}, seeds=[2, 3], backend=BACKEND)\n", 1)
-            if any(call in new for call in ("kriging.predict(", "simulation.", "rbf_trend(")):
+            if any(call in new for call in ("kriging.", "simulation.", "rbf_trend(")):
                 times = book_times(cell)
                 note = (f"# Published book (GStatSim on CPU): {', '.join(times)}\n" if times else "")
                 new = "%%time\n" + note + new
@@ -136,8 +148,13 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("book", type=Path, help="checkout of GatorGlaciology/gstatsimbook")
     p.add_argument("--out", type=Path, default=Path(__file__).resolve().parents[1] / "notebooks" / "book")
+    p.add_argument("--only", nargs="+", metavar="N",
+                   help="chapter numbers to rebuild (default: all). Rebuilt notebooks lose their "
+                        "outputs until they're run again.")
     a = p.parse_args(argv)
     for name, title in CHAPTERS.items():
+        if a.only and name.split("_")[0] not in a.only:
+            continue
         convert(a.book / name, a.out / name.replace(".ipynb", "_GPU.ipynb"), title)
         print("wrote", a.out / name.replace(".ipynb", "_GPU.ipynb"))
     return 0

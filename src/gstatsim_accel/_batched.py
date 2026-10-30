@@ -215,3 +215,82 @@ def krige(xp, points, X, Y, Z, vario, num_points, radius, ordinary, global_mean,
         est[start:start + len(p)] = to_numpy(xp, e)
         var[start:start + len(p)] = to_numpy(xp, v)
     return est, var
+
+
+def nearest_secondary(xp, points, X2, Y2, batch_size=None):
+    """Index of the nearest secondary point to each point
+    (NearestNeighbor.nearest_neighbor_secondary: no radius limit, ties to the
+    earlier row). Returns a NumPy int array."""
+    X2d, Y2d = xp.asarray(X2), xp.asarray(Y2)
+    if batch_size is None:
+        batch_size = int(min(4096, max(64, _SEARCH_ELEMS // max(len(X2), 1))))
+    out = np.empty(len(points), dtype=np.int64)
+    for start in range(0, len(points), batch_size):
+        p = xp.asarray(points[start:start + batch_size])
+        dx = X2d[None, :] - p[:, 0:1]
+        dy = Y2d[None, :] - p[:, 1:2]
+        d2 = dx * dx
+        d2 += dy * dy
+        out[start:start + len(p)] = to_numpy(xp, xp.argmin(d2, axis=1))
+    return out
+
+
+def mm1_stats(Z1, Z2):
+    """Means and variances cokrige_mm1/cosim_mm1 use (np.average, np.var)."""
+    return (float(np.average(Z1)), float(np.var(Z1)), float(np.average(Z2)), float(np.var(Z2)))
+
+
+def cokrige_mm1(xp, points, X1, Y1, Z1, X2, Y2, Z2, vario, num_points, radius, corrcoef,
+                batch_size=None):
+    """Interpolation.cokrige_mm1: simple cokriging with the nearest secondary
+    point, Markov model 1. Returns NumPy (estimate, variance)."""
+    mean_1, var_1, mean_2, var_2 = mm1_stats(Z1, Z2)
+    # GStatSim replaces the sill with the primary variance (vario[4] = np.var(Z1)).
+    vario = list(vario[:4]) + [var_1] + list(vario[5:])
+    R = gs.make_rotation_matrix(vario[0], vario[2], vario[3])
+    sec = nearest_secondary(xp, points, X2, Y2)
+    X1d, Y1d, Z1d = xp.asarray(X1), xp.asarray(Y1), xp.asarray(Z1)
+    est = np.empty(len(points))
+    var = np.empty(len(points))
+    if batch_size is None:
+        batch_size = int(min(4096, max(64, _SEARCH_ELEMS // max(len(X1), 1))))
+    rho = float(corrcoef)
+
+    for start in range(0, len(points), batch_size):
+        p = points[start:start + batch_size]
+        near = np.nonzero((X1 >= p[:, 0].min() - radius) & (X1 <= p[:, 0].max() + radius) &
+                          (Y1 >= p[:, 1].min() - radius) & (Y1 <= p[:, 1].max() + radius))[0]
+        sub = xp.asarray(near)
+        Xs, Ys, Zs = X1d[sub], Y1d[sub], Z1d[sub]
+        px, py = xp.asarray(p[:, 0]), xp.asarray(p[:, 1])
+        nbr, coincident = find_neighbors(xp, px, py, Xs, Ys, radius, num_points)
+        valid = nbr >= 0
+        if bool((~valid.any(axis=1) & (coincident < 0)).any()):
+            raise ValueError("Unable to find nearest neighbors for some prediction points. "
+                             "Try increasing the search radius.")
+        j = xp.where(valid, nbr, 0)
+        s = xp.asarray(sec[start:start + len(p)])
+
+        # Primary neighbors plus the secondary point as one extra column.
+        K = nbr.shape[1]
+        cx = xp.concatenate([Xs[j], xp.asarray(X2)[s][:, None]], axis=1)
+        cy = xp.concatenate([Ys[j], xp.asarray(Y2)[s][:, None]], axis=1)
+        vall = xp.concatenate([valid, xp.ones((len(p), 1), dtype=bool)], axis=1)
+        C, c0 = kriging_systems(xp, vall, cx, cy, px, py, vario, R, ordinary=False)
+        # Markov model 1: secondary covariances are the primary's times rho, unit variance.
+        C[:, K, :] *= rho
+        C[:, :, K] *= rho
+        C[:, K, K] = 1.0
+        c0[:, K] *= rho
+        w = solve(xp, C, c0, vall, ordinary=False)
+
+        z = Zs[j]
+        e = (mean_1 + xp.sum(w[:, :K] * (z - mean_1) / np.sqrt(var_1) * valid, axis=1)
+             + w[:, K] * (xp.asarray(Z2)[s] - mean_2) / np.sqrt(var_2))
+        v = var_1 - xp.sum(w * c0, axis=1)
+        on_datum = coincident >= 0
+        e = xp.where(on_datum, Zs[xp.where(on_datum, coincident, 0)], e)
+        v = xp.where(on_datum, 0.0, v)
+        est[start:start + len(p)] = to_numpy(xp, e)
+        var[start:start + len(p)] = to_numpy(xp, v)
+    return est, var

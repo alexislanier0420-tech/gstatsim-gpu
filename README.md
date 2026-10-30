@@ -89,8 +89,9 @@ chapters, same text and data, with only the slow calls swapped
 | 6 Non-stationary SGS (k-means clusters) | 6 min 00 s | **29 s** |
 | 7 Non-stationary SGS (adaptive partitioning) | 6 min 19 s | **29 s** |
 | 8 Interpolation with a trend | 5 min 23 s | **21 s** |
+| 9 Cokriging & cosimulation (MM1) | 6 min 41 s | **21 s** |
 
-Chapter 9 (cokriging and cosimulation) isn't on the GPU yet.
+Every chapter with a slow step now runs on the GPU (chapters 1–2 only fit variograms, which take seconds).
 
 ### ⚡ Speed (laptop, NVIDIA RTX 5060 8 GB)
 
@@ -165,10 +166,10 @@ Exact versions are in [environment.yml](environment.yml).
 | Path | What it does |
 |---|---|
 | `notebooks/rubble_glacier_workflow.ipynb` | **The full workflow**: data → trend → variogram → GPU kriging → SGS ensemble → figures |
-| `src/gstatsim_accel/kriging.py` | `predict()`: the notebook-facing kriging function; picks the CPU or GPU backend |
-| `src/gstatsim_accel/simulation.py` | `sgs()`, `realizations()` and `cluster_sgs()`: SGS, one or many realizations, CPU or GPU |
+| `src/gstatsim_accel/kriging.py` | `predict()` and `cokrige_mm1()`: kriging and cokriging, CPU or GPU |
+| `src/gstatsim_accel/simulation.py` | `sgs()`, `realizations()`, `cluster_sgs()` and `cosim_mm1()`: one or many realizations, CPU or GPU |
 | `src/gstatsim_accel/_batched.py` | Batched octant search and kriging, written once for NumPy and CuPy |
-| `notebooks/book/` | GPU versions of GStatSim book chapters 3–8 ([details](notebooks/book/README.md)) |
+| `notebooks/book/` | GPU versions of GStatSim book chapters 3–9 ([details](notebooks/book/README.md)) |
 | `src/gstatsim_accel/_sgs_cuda.py` | **CUDA kernel** for SGS: a whole realization per thread block, one launch |
 | `src/gstatsim_accel/_sgs.py` | CuPy/NumPy SGS (fallback for settings the kernel doesn't support, and the CPU check) |
 | `scripts/make_book_gpu_notebooks.py` | Builds `notebooks/book/` from a checkout of the GStatSim book |
@@ -184,7 +185,7 @@ Exact versions are in [environment.yml](environment.yml).
 | `figures/results/` | Input map, variogram, kriging maps and realization checks from the notebook |
 | `scripts/env_report.py` | Environment report plus a GPU smoke test |
 | `scripts/hpg/env_report.sbatch` | Runs the environment report on a HiPerGator L4 GPU |
-| `tests/` | 78 tests: GPU and NumPy kriging/SGS vs GStatSim, tie handling, backend selection, input checks |
+| `tests/` | 84 tests: GPU and NumPy kriging/SGS vs GStatSim, tie handling, backend selection, input checks |
 | `figures/prep_map_data.py` | Crops BedMachine and Bedmap3 to the study area (radar bed, rock outcrops, mask) |
 | `figures/make_method_figure.py` | Draws `method_figure.png/.pdf/.svg` (above) |
 | `figures/data/` | The cropped study-area data (0.7 MB) the notebook and figure read |

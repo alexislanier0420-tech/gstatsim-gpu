@@ -81,3 +81,9 @@ def check_method(method: str) -> str:
     if not isinstance(method, str) or method.lower() not in METHODS:
         raise ValueError(f"method must be one of {METHODS}, got {method!r}")
     return method.lower()
+
+
+def check_corrcoef(corrcoef) -> float:
+    if not isinstance(corrcoef, numbers.Real) or not np.isfinite(corrcoef) or not -1 < corrcoef < 1:
+        raise ValueError(f"corrcoef must be a number strictly between -1 and 1, got {corrcoef!r}")
+    return float(corrcoef)

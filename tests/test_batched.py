@@ -112,3 +112,49 @@ def test_predict_gpu_matches_cpu(method, scattered):
     gpu = kriging.predict(df, pts, VARIOS[1], num_points=32, radius=8000, method=method, backend="gpu")
     np.testing.assert_allclose(gpu[0], cpu[0], rtol=0, atol=1e-6)
     np.testing.assert_allclose(gpu[1], cpu[1], rtol=0, atol=1e-6)
+
+
+@pytest.fixture(scope="module")
+def with_secondary():
+    rng = np.random.default_rng(3)
+    x, y = rng.uniform(0, 3e4, 300), rng.uniform(0, 3e4, 300)
+    z = np.sin(x / 5e3) + np.cos(y / 7e3) + 0.2 * rng.standard_normal(300)
+    g = np.arange(500, 30000, 1000.0)
+    gx, gy = np.meshgrid(g, g)
+    x2, y2 = gx.ravel() + 3.7, gy.ravel() - 11.1   # offset so no point coincides with the grid
+    z2 = np.sin(x2 / 5e3) + 0.5 * np.cos(y2 / 9e3) + 0.3 * rng.standard_normal(len(x2))
+    pts = np.column_stack([rng.uniform(0, 3e4, 150), rng.uniform(0, 3e4, 150)])
+    pts[:2] = np.column_stack([x[:2], y[:2]])
+    return pd.DataFrame({"X": x, "Y": y, "Z": z}), pd.DataFrame({"X": x2, "Y": y2, "Z": z2}), pts
+
+
+@pytest.mark.parametrize("xp", XPS)
+@pytest.mark.parametrize("vario", VARIOS[:2], ids=lambda v: v[5])
+def test_cokrige_mm1_matches_gstatsim(xp, vario, with_secondary):
+    df1, df2, pts = with_secondary
+    ref_est, ref_var = gs.Interpolation.cokrige_mm1(pts, df1.copy(), "X", "Y", "Z", df2.copy(), "X", "Y", "Z",
+                                                    32, list(vario), 9000, 0.6, quiet=True)
+    est, var = _batched.cokrige_mm1(xp, pts, *(df1[c].to_numpy() for c in "XYZ"),
+                                    *(df2[c].to_numpy() for c in "XYZ"), vario, 32, 9000, 0.6)
+    np.testing.assert_allclose(est, ref_est, rtol=0, atol=1e-6)
+    np.testing.assert_allclose(var, ref_var, rtol=0, atol=1e-6)
+
+
+@needs_gpu
+def test_cosim_mm1_matches_gstatsim_and_leaves_vario_alone(with_secondary):
+    from gstatsim_accel import simulation
+
+    df1, df2, pts = with_secondary
+    vario = [30, 0.1, 8000.0, 4000.0, 1.0, "Spherical"]
+    kw = dict(num_points=32, radius=9000, corrcoef=0.6)
+    gpu = simulation.cosim_mm1(df1, df2, pts, vario, seeds=[7, 8], backend="gpu", **kw)
+    for row, seed in zip(gpu, (7, 8)):
+        np.testing.assert_allclose(row, simulation.cosim_mm1(df1, df2, pts, vario, seed=seed, **kw),
+                                   rtol=0, atol=1e-6)
+    assert vario[4] == 1.0  # GStatSim itself would have overwritten the sill
+
+
+def test_corrcoef_validated(with_secondary):
+    df1, df2, pts = with_secondary
+    with pytest.raises(ValueError, match="corrcoef"):
+        kriging.cokrige_mm1(df1, df2, pts, VARIOS[0], num_points=16, radius=5000, corrcoef=1.0)

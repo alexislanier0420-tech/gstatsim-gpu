@@ -198,3 +198,62 @@ def cluster_sgs(
             # cluster_sgs uses np.average for the simple-kriging mean
             global_mean=float(np.average(df["Z"].to_numpy())))
     return out if many else out[0]
+
+
+def cosim_mm1(
+    conditioning_data,
+    secondary_data,
+    prediction_points,
+    variogram,
+    *,
+    num_points: int,
+    radius: float,
+    corrcoef: float,
+    seed: int | None = None,
+    seeds=None,
+    backend: str = "cpu",
+    xx: str = "X",
+    yy: str = "Y",
+    zz: str = "Z",
+    xx2: str = "X",
+    yy2: str = "Y",
+    zz2: str = "Z",
+    quiet: bool = True,
+) -> np.ndarray:
+    """SGS with a secondary variable, Markov model 1 (GStatSim's cosim_mm1).
+
+    Same inputs as kriging.cokrige_mm1, plus seed (one realization, shape (M,))
+    or seeds (one per entry, shape (len(seeds), M), side by side on the GPU).
+    """
+    if seeds is not None and seed is not None:
+        raise ValueError("pass either seed or seeds, not both")
+    many = seeds is not None
+    seeds = list(seeds) if many else [seed]
+    if many and (not seeds or not all(isinstance(s, numbers.Integral) and not isinstance(s, bool) for s in seeds)):
+        raise ValueError("seeds must be a non-empty list of integers")
+    if not many and seed is not None and (not isinstance(seed, numbers.Integral) or isinstance(seed, bool)):
+        raise ValueError(f"seed must be an integer or None, got {seed!r}")
+
+    backend = resolve_backend(backend)
+    points = validation.check_prediction_points(prediction_points)
+    df1 = validation.check_conditioning_data(conditioning_data, xx, yy, zz)
+    df2 = validation.check_conditioning_data(secondary_data, xx2, yy2, zz2)
+    vario = validation.check_variogram(variogram)
+    validation.check_search(num_points, radius)
+    corrcoef = validation.check_corrcoef(corrcoef)
+
+    if len(points) == 0:
+        out = np.empty((len(seeds), 0))
+    elif backend == "cpu":
+        import gstatsim as gs
+
+        out = np.stack([np.asarray(gs.Interpolation.cosim_mm1(
+            points, df1, "X", "Y", "Z", df2, "X", "Y", "Z", num_points, list(vario), radius, corrcoef,
+            seed=s, quiet=quiet), dtype=np.float64) for s in seeds])
+    else:
+        from . import _sgs_cuda
+
+        out = _sgs_cuda.cosim_mm1_ensemble(points, *(df1[c].to_numpy() for c in "XYZ"),
+                                           *(df2[c].to_numpy() for c in "XYZ"), vario, num_points,
+                                           radius, corrcoef, seeds)
+    return out if many else out[0]

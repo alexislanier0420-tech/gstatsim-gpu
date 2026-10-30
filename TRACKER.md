@@ -123,6 +123,7 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 | 10-30 | Laptop RTX 5060 | Book ch. 4 SGS, k=100 | CUDA kernel, 32 together | 22,500 | **0.80 s / realization** | — | crit. 3 | 25.5 s for all 32 |
 | 10-30 | Laptop RTX 5060 | GPU book notebooks ch. 3/4/5/8 (slow steps) | gpu | — | 4.3 / 19 / 34 / 22 s | — | — | book CPU: 4:11 / 7:58 / 10:25 / 5:23 |
 | 10-30 | Laptop RTX 5060 | GPU book notebooks ch. 3–8, rerun after cluster kernel | gpu | — | 3.9 / 20 / 35 / 29 / 29 / 21 s | — | cluster_sgs matches GStatSim ~1e-11 | book CPU: 4:11 / 7:58 / 10:25 / 6:00 / 6:19 / 5:23 |
+| 10-30 | Laptop RTX 5060 | GPU book notebook ch. 9 (cokriging + cosimulation) | gpu | — | 5.3 s + 15.6 s | — | cokrige/cosim_mm1 match GStatSim ~1e-13 | book CPU: 3:01 + 3:40 |
 
 ## Risks to watch
 - Data: `glacier_lab1.nc` may still hold the Marie Byrd Land crop; check extent before using lab outputs.
