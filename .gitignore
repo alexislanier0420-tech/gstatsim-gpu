@@ -9,3 +9,5 @@ logs/
 *.nc
 *.npy
 .ipynb_checkpoints/
+notebooks/book/data/
+notebooks/book/plot_utils.py

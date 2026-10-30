@@ -4,12 +4,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from gstatsim_accel import _sgs, gpu_status, simulation
+from gstatsim_accel import _sgs, _sgs_cuda, gpu_status, simulation
 
+# Three implementations: CuPy-style code on NumPy, on CuPy, and the CUDA kernel.
 XPS = [pytest.param(np, id="numpy")]
 if gpu_status().available:
     import cupy as cp
-    XPS.append(pytest.param(cp, id="gpu"))
+    XPS += [pytest.param(cp, id="cupy"), pytest.param("cuda", id="cuda-kernel")]
 
 
 @pytest.fixture(scope="module")
@@ -21,9 +22,14 @@ def field():
     return pd.DataFrame({"X": x, "Y": y, "Z": z}), pts
 
 
+def ensemble(xp, df, pts, vario, method, seeds):
+    args = (pts, df.X.to_numpy(), df.Y.to_numpy(), df.Z.to_numpy(), vario, 16, 8000,
+            method == "ordinary", seeds, float(df.Z.mean()))
+    return _sgs_cuda.sgs_ensemble(*args) if xp == "cuda" else _sgs.sgs_ensemble(xp, *args)
+
+
 def run(xp, df, pts, vario, method, seed=7):
-    return _sgs.sgs(xp, pts, df.X.to_numpy(), df.Y.to_numpy(), df.Z.to_numpy(), vario, 16, 8000,
-                    method == "ordinary", seed, float(df.Z.mean()))
+    return ensemble(xp, df, pts, vario, method, [seed])[0]
 
 
 @pytest.mark.parametrize("xp", XPS)
@@ -53,8 +59,7 @@ def test_ensemble_rows_match_gstatsim_per_seed(xp, field):
     pts[:3] = df[["X", "Y"]].to_numpy()[:3]  # some steps copy a datum, others don't
     vario = [20, 0.0, 6000.0, 3000.0, 1.0, "Exponential"]
     seeds = [3, 11, 42]
-    ens = _sgs.sgs_ensemble(xp, pts, df.X.to_numpy(), df.Y.to_numpy(), df.Z.to_numpy(), vario, 16, 8000,
-                            False, seeds, float(df.Z.mean()))
+    ens = ensemble(xp, df, pts, vario, "simple", seeds)
     for row, seed in zip(ens, seeds):
         ref = simulation.sgs(df, pts, vario, num_points=16, radius=8000, seed=seed)
         np.testing.assert_allclose(row, ref, rtol=0, atol=1e-6)

@@ -75,18 +75,35 @@ and on rock, larger between them. Right: ensemble mean minus BedMachine v3 (mean
 absolute difference 110 m).* The realizations reproduce the data's histogram and
 variogram ([figures/results/realization_checks.png](figures/results/realization_checks.png)).
 
+### 📚 The GStatSim book on the GPU
+
+GPU versions of the [GStatSim Jupyter Book](https://gatorglaciology.github.io/gstatsimbook/)
+chapters, same text and data, with only the slow calls swapped
+([notebooks/book/](notebooks/book/README.md)):
+
+| Book chapter | Book (GStatSim, CPU) | GPU |
+|---|---|---|
+| 3 Simple & ordinary kriging | 4 min 11 s | **4.3 s** |
+| 4 Sequential Gaussian simulation | 7 min 58 s | **19 s** |
+| 5 Interpolation with anisotropy | 10 min 25 s | **34 s** |
+| 8 Interpolation with a trend | 5 min 23 s | **22 s** |
+
+Chapters 6–7 (`cluster_sgs`) and 9 (cokriging) aren't on the GPU yet.
+
 ### ⚡ Speed (laptop, NVIDIA RTX 5060 8 GB)
 
 | Workload | GStatSim 1.2.0 | Our NumPy version | **GPU** |
 |---|---|---|---|
 | Tutorial 3 simple kriging, 22,500 cells | 158 s | 19.8 s | **0.91 s (173×)** |
-| Tutorial 3 SGS, 1,600 cells, per realization | 24.9 s | 2.9 s | 14.9 s alone; **0.31 s with 50 together (80×)** |
+| Book ch. 4 SGS, 22,500 cells, per realization | ~150 s | — | **~18 s alone; 0.8 s with 32 together** |
 | Rubble Glacier simple kriging, 40,000 cells | ~2 min (est.) | — | **2.3 s (~53×)** |
 | Rubble Glacier SGS, 30,750 cells, per realization | 146 s | — | 90 s alone; **6.0 s with 50 together (24×)** |
 
-The GPU only speeds up SGS when many realizations run together: SGS is
-sequential within a realization, so one realization on its own is *slower* on the
-GPU than on the CPU. Full log: [TRACKER.md](TRACKER.md#benchmark-log).
+SGS is sequential within a realization, so it runs as a custom **CUDA kernel**: one
+thread block walks a realization's whole random path (neighbor search, covariance
+matrix, Cholesky solve, sample) without returning to Python, and realizations run
+as separate blocks at the same time. One realization is ~8× faster than GStatSim;
+many together are far faster. Full log: [TRACKER.md](TRACKER.md#benchmark-log).
 
 ### ✅ Does the GPU give the same answers?
 
@@ -149,7 +166,10 @@ Exact versions are in [environment.yml](environment.yml).
 | `src/gstatsim_accel/kriging.py` | `predict()`: the notebook-facing kriging function; picks the CPU or GPU backend |
 | `src/gstatsim_accel/simulation.py` | `sgs()` and `realizations()`: SGS, one or many realizations, CPU or GPU |
 | `src/gstatsim_accel/_batched.py` | Batched octant search and kriging, written once for NumPy and CuPy |
-| `src/gstatsim_accel/_sgs.py` | SGS that steps many realizations together on the GPU, keeping GStatSim's exact algorithm |
+| `notebooks/book/` | GPU versions of GStatSim book chapters 3, 4, 5 and 8 ([details](notebooks/book/README.md)) |
+| `src/gstatsim_accel/_sgs_cuda.py` | **CUDA kernel** for SGS: a whole realization per thread block, one launch |
+| `src/gstatsim_accel/_sgs.py` | CuPy/NumPy SGS (fallback for settings the kernel doesn't support, and the CPU check) |
+| `scripts/make_book_gpu_notebooks.py` | Builds `notebooks/book/` from a checkout of the GStatSim book |
 | `src/gstatsim_accel/backend.py` | Detects whether a usable GPU is present; raises `BackendUnavailableError` if not |
 | `src/gstatsim_accel/validation.py` | Checks inputs (shapes, NaNs, variogram, search settings) before either backend runs |
 | `src/gstatsim_accel/bench.py` | Benchmark timing (warm-up, repeats) and JSON run records |
@@ -162,7 +182,7 @@ Exact versions are in [environment.yml](environment.yml).
 | `figures/results/` | Input map, variogram, kriging maps and realization checks from the notebook |
 | `scripts/env_report.py` | Environment report plus a GPU smoke test |
 | `scripts/hpg/env_report.sbatch` | Runs the environment report on a HiPerGator L4 GPU |
-| `tests/` | 70 tests: GPU and NumPy kriging/SGS vs GStatSim, tie handling, backend selection, input checks |
+| `tests/` | 76 tests: GPU and NumPy kriging/SGS vs GStatSim, tie handling, backend selection, input checks |
 | `figures/prep_map_data.py` | Crops BedMachine and Bedmap3 to the study area (radar bed, rock outcrops, mask) |
 | `figures/make_method_figure.py` | Draws `method_figure.png/.pdf/.svg` (above) |
 | `figures/data/` | The cropped study-area data (0.7 MB) the notebook and figure read |

@@ -59,13 +59,24 @@ def sgs(
 
     if vario[5].lower() == "matern":
         raise NotImplementedError("Matern covariance isn't supported on the GPU yet; use backend='cpu'")
+    return _gpu_ensemble(df, points, vario, num_points, radius, method, [seed])[0]
+
+
+def _gpu_ensemble(df, points, vario, num_points, radius, method, seeds):
+    """CUDA kernel when it supports the settings, otherwise the CuPy version.
+    Both give GStatSim's result for each seed (up to neighbor ties)."""
+    from . import _sgs_cuda
+
+    args = (points, df["X"].to_numpy(), df["Y"].to_numpy(), df["Z"].to_numpy(), vario,
+            num_points, radius)
+    kw = dict(ordinary=(method == "ordinary"), seeds=list(seeds), global_mean=float(df["Z"].mean()))
+    if _sgs_cuda.supports(vario, num_points):
+        return _sgs_cuda.sgs_ensemble(*args, **kw)
     import cupy as cp
 
     from . import _sgs
 
-    return _sgs.sgs(cp, points, df["X"].to_numpy(), df["Y"].to_numpy(), df["Z"].to_numpy(),
-                    vario, num_points, radius, ordinary=(method == "ordinary"), seed=seed,
-                    global_mean=float(df["Z"].mean()))
+    return _sgs.sgs_ensemble(cp, *args, **kw)
 
 
 def realizations(
@@ -88,6 +99,9 @@ def realizations(
     Row i equals sgs(..., seed=seeds[i]). On the GPU all realizations are
     simulated together, one node each per step, which is where the speedup
     comes from; on the CPU they run one after another through GStatSim.
+    The GPU path is a CUDA kernel that runs each realization as one thread
+    block (exponential/Gaussian/spherical, up to 96 neighbors); other settings
+    use a slower CuPy version.
     """
     seeds = list(seeds)
     if not seeds or not all(isinstance(s, numbers.Integral) and not isinstance(s, bool) for s in seeds):
@@ -109,10 +123,4 @@ def realizations(
         raise NotImplementedError("Matern covariance isn't supported on the GPU yet; use backend='cpu'")
     if len(points) == 0:
         return np.empty((len(seeds), 0))
-    import cupy as cp
-
-    from . import _sgs
-
-    return _sgs.sgs_ensemble(cp, points, df["X"].to_numpy(), df["Y"].to_numpy(), df["Z"].to_numpy(),
-                             vario, num_points, radius, ordinary=(method == "ordinary"), seeds=seeds,
-                             global_mean=float(df["Z"].mean()))
+    return _gpu_ensemble(df, points, vario, num_points, radius, method, seeds)
