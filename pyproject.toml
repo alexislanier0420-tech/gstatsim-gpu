@@ -21,7 +21,9 @@ classifiers = [
 dependencies = [
     # The CPU backend is GStatSim itself; record the installed version in every benchmark.
     "gstatsim>=1.2.0",
-    "numpy>=1.24",
+    # GStatSim 1.2.0's SGS stores rng.normal(..., 1) (a 1-element array) in an array slot,
+    # which NumPy deprecated in 1.25 and rejects since 2.4. Lift the cap once GStatSim fixes it.
+    "numpy>=1.24,<2.4",
     "pandas>=1.5",
     "scipy>=1.10",
     "scikit-learn>=1.2",
