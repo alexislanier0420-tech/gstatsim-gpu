@@ -20,10 +20,9 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from bench_kriging import prepare
 from scipy import stats
 
-import gstatsim as gs
-from bench_kriging import prepare
 from gstatsim_accel import simulation
 
 LAGS = [2000, 5000, 10000, 20000]  # m, for the realization variogram
@@ -59,7 +58,8 @@ def main(argv=None) -> int:
     kw = dict(num_points=100, radius=50_000, zz="NZ")
 
     ens = {}
-    for name, start, backend in (("A_gstatsim", 0, "cpu"), ("B_gstatsim", 1000, "cpu"), ("C_gpu", 2000, "gpu")):
+    ensembles = (("A_gstatsim", 0, "cpu"), ("B_gstatsim", 1000, "cpu"), ("C_gpu", 2000, "gpu"))
+    for name, start, backend in ensembles:
         seeds = list(range(start, start + a.n))
         print(f"{name}: {a.n} realizations x {len(pts)} nodes ...", flush=True)
         ens[name] = simulation.realizations(df, pts, vario, seeds=seeds, backend=backend, **kw)

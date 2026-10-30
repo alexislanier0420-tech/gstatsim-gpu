@@ -17,9 +17,8 @@ from __future__ import annotations
 
 import functools
 
-import numpy as np
-
 import gstatsim as gs
+import numpy as np
 
 from ._batched import OCTANT_EDGES
 
@@ -52,10 +51,10 @@ extern "C" __global__ void sgs_kernel(
     double* out, int* flags,                         // (S, M) result; (S) error flags
     const int N, const int M, const int L,
     const double radius, const int oct_count, const int ordinary,
-    const double* vparams,                           // (C, 8) per variogram: vtype, nugget, sill, R00, R01, R10, R11, -
-    int* labels, const int cluster_mode,             // (S, L) cluster of each point (cluster_sgs); 0 = one variogram
+    const double* vparams,          // (C, 8) per variogram: vtype, nugget, sill, R00, R01, R10, R11, -
+    int* labels, const int cluster_mode,   // (S, L) cluster of each point (cluster_sgs)
     const double global_mean,
-    const double* sec, const int mm1,                // (M, 3) nearest secondary x, y, value per node (cosim_mm1)
+    const double* sec, const int mm1,      // (M, 3) nearest secondary x, y, value (cosim_mm1)
     const double rho, const double var_1, const double mean_2, const double var_2)
 {
     const int s = blockIdx.x, tid = threadIdx.x, bs = blockDim.x;
@@ -285,7 +284,7 @@ extern "C" __global__ void sgs_kernel(
 """
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _kernel(maxk: int):
     import cupy as cp
 
@@ -330,7 +329,7 @@ def _run(points, X, Y, Z, labels, varios, num_points, radius, ordinary, seeds, g
     # Path, datum copies and random draws: identical to _sgs.sgs_ensemble.
     first_datum = {}
     if copy_datum:
-        for i, xy in enumerate(zip(X, Y)):
+        for i, xy in enumerate(zip(X, Y, strict=True)):
             first_datum.setdefault(xy, i)
     datum_of = np.array([first_datum.get((x, y), -1) for x, y in points])
     node = np.empty((S, M), dtype=np.int64)

@@ -40,7 +40,9 @@ def gpu_smoke_test() -> dict:
 
 
 def to_markdown(rep: dict) -> str:
-    gib = lambda b: f"{b / 2**30:.1f} GiB" if b else "unknown"
+    def gib(b):
+        return f"{b / 2**30:.1f} GiB" if b else "unknown"
+
     g = rep["cupy_gpu"]
     lines = [
         f"# Environment report ({rep['timestamp_utc']})", "",

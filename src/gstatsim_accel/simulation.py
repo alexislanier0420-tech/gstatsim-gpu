@@ -10,6 +10,24 @@ from . import validation
 from .backend import resolve_backend
 
 
+def _is_int(v) -> bool:
+    return isinstance(v, numbers.Integral) and not isinstance(v, bool)
+
+
+def _seed_list(seed, seeds) -> tuple[bool, list]:
+    """Validate seed (one realization) or seeds (several); returns (several?, seed list)."""
+    if seeds is not None and seed is not None:
+        raise ValueError("pass either seed or seeds, not both")
+    if seeds is None:
+        if seed is not None and not _is_int(seed):
+            raise ValueError(f"seed must be an integer or None, got {seed!r}")
+        return False, [seed]
+    seeds = list(seeds)
+    if not seeds or not all(_is_int(v) for v in seeds):
+        raise ValueError("seeds must be a non-empty list of integers")
+    return True, seeds
+
+
 def sgs(
     conditioning_data,
     prediction_points,
@@ -44,8 +62,7 @@ def sgs(
     df = validation.check_conditioning_data(conditioning_data, xx, yy, zz)
     vario = validation.check_variogram(variogram)
     validation.check_search(num_points, radius)
-    if seed is not None and (not isinstance(seed, numbers.Integral) or isinstance(seed, bool)):
-        raise ValueError(f"seed must be an integer or None, got {seed!r}")
+    _seed_list(seed, None)
 
     if len(points) == 0:
         return np.empty(0)
@@ -103,9 +120,7 @@ def realizations(
     block (exponential/Gaussian/spherical, up to 96 neighbors); other settings
     use a slower CuPy version.
     """
-    seeds = list(seeds)
-    if not seeds or not all(isinstance(s, numbers.Integral) and not isinstance(s, bool) for s in seeds):
-        raise ValueError("seeds must be a non-empty list of integers")
+    _, seeds = _seed_list(None, seeds)
     backend = resolve_backend(backend)
     if backend == "cpu":
         return np.stack([
@@ -153,14 +168,7 @@ def cluster_sgs(
         entry of `seeds` (returns shape (len(seeds), M); simulated side by side
         on the GPU).
     """
-    if seeds is not None and seed is not None:
-        raise ValueError("pass either seed or seeds, not both")
-    many = seeds is not None
-    seeds = list(seeds) if many else [seed]
-    if many and (not seeds or not all(isinstance(s, numbers.Integral) and not isinstance(s, bool) for s in seeds)):
-        raise ValueError("seeds must be a non-empty list of integers")
-    if not many and seed is not None and (not isinstance(seed, numbers.Integral) or isinstance(seed, bool)):
-        raise ValueError(f"seed must be an integer or None, got {seed!r}")
+    many, seeds = _seed_list(seed, seeds)
 
     backend = resolve_backend(backend)
     points = validation.check_prediction_points(prediction_points)
@@ -186,8 +194,9 @@ def cluster_sgs(
 
         dfk = df.assign(K=labels)
         gamma = pd.DataFrame({"Variogram": varios})
-        out = np.stack([np.asarray(gs.Interpolation.cluster_sgs(
-            points, dfk, "X", "Y", "Z", "K", num_points, gamma, radius, seed=s, quiet=quiet), dtype=np.float64)
+        out = np.stack([
+            np.asarray(gs.Interpolation.cluster_sgs(points, dfk, "X", "Y", "Z", "K", num_points, gamma,
+                                                    radius, seed=s, quiet=quiet), dtype=np.float64)
             for s in seeds])
     else:
         from . import _sgs_cuda
@@ -225,14 +234,7 @@ def cosim_mm1(
     Same inputs as kriging.cokrige_mm1, plus seed (one realization, shape (M,))
     or seeds (one per entry, shape (len(seeds), M), side by side on the GPU).
     """
-    if seeds is not None and seed is not None:
-        raise ValueError("pass either seed or seeds, not both")
-    many = seeds is not None
-    seeds = list(seeds) if many else [seed]
-    if many and (not seeds or not all(isinstance(s, numbers.Integral) and not isinstance(s, bool) for s in seeds)):
-        raise ValueError("seeds must be a non-empty list of integers")
-    if not many and seed is not None and (not isinstance(seed, numbers.Integral) or isinstance(seed, bool)):
-        raise ValueError(f"seed must be an integer or None, got {seed!r}")
+    many, seeds = _seed_list(seed, seeds)
 
     backend = resolve_backend(backend)
     points = validation.check_prediction_points(prediction_points)

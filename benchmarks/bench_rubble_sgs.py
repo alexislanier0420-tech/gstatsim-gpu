@@ -14,12 +14,12 @@ import sys
 import time
 from pathlib import Path
 
+import gstatsim as gs
 import numpy as np
 import pandas as pd
 import skgstat as skg
 from sklearn.preprocessing import QuantileTransformer
 
-import gstatsim as gs
 from gstatsim_accel import bench, simulation
 
 ROOT = Path(__file__).resolve().parents[1]

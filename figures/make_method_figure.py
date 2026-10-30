@@ -40,8 +40,10 @@ plt.rcParams.update({
 # Okabe-Ito based, colour-blind safe
 STATUS = {
     "cpu":  dict(edge="#7a7a7a", fill="#eeeeee", ls="-",  label="Stays on CPU"),
-    "gpu":  dict(edge="#0072B2", fill="#d5e7f4", ls="-",  label="Existing GPU code (gstatsim_gpu, CuPy): integrate + validate"),
-    "cuda": dict(edge="#D55E00", fill="#fbe0cc", ls="-",  label="Proposed new CUDA C++ kernel (this project)"),
+    "gpu":  dict(edge="#0072B2", fill="#d5e7f4", ls="-",
+                 label="Existing GPU code (gstatsim_gpu, CuPy): integrate + validate"),
+    "cuda": dict(edge="#D55E00", fill="#fbe0cc", ls="-",
+                 label="Proposed new CUDA C++ kernel (this project)"),
     "cand": dict(edge="#7a7a7a", fill="#ffffff", ls="--", label="GPU candidate: profile first"),
 }
 DATA_C = "#1a1a1a"
@@ -394,7 +396,7 @@ cur = path[-1]
 for p in list(path[:-1]) + list(nearest(cur, data_xy, 2)):
     ax.plot([cur[0], p[0]], [cur[1], p[1]], lw=0.7, color=STATUS["cuda"]["edge"],
             zorder=2)
-for i, (p, c) in enumerate(zip(path, cols), 1):
+for i, (p, c) in enumerate(zip(path, cols, strict=False), 1):
     ax.scatter(*p, s=70, color=c, ec="white", lw=0.6, zorder=5)
     ax.text(*p, str(i), ha="center", va="center", fontsize=5.6,
             fontweight="bold", color="white" if i > 2 else "black", zorder=6)

@@ -6,11 +6,11 @@ data, and on gridded data every difference must be an equidistant-neighbor swap.
 
 import math
 
+import gstatsim as gs
 import numpy as np
 import pandas as pd
 import pytest
 
-import gstatsim as gs
 from gstatsim_accel import _batched, gpu_status, kriging
 
 XPS = [pytest.param(np, id="numpy")]
@@ -89,12 +89,13 @@ def test_gridded_differences_are_only_equidistant_swaps(xp):
 
     differs = np.flatnonzero(np.abs(est - ref_est) > 1e-6)
     nbr, _ = _batched.find_neighbors(np, pts[differs, 0], pts[differs, 1], x, y, 6000, 16)
-    for i, row in zip(differs, nbr):
+    for i, row in zip(differs, nbr, strict=True):
         ours = {(x[j], y[j]) for j in row if j >= 0}
         theirs = {(a, b) for a, b, _ in gs.NearestNeighbor.nearest_neighbor_search(6000, 16, pts[i], df)}
         assert ours != theirs, f"cell {i}: same neighbors but values differ"
-        d = lambda s: sorted(round(math.hypot(a - pts[i, 0], b - pts[i, 1]), 6) for a, b in s)
-        assert d(ours - theirs) == d(theirs - ours), f"cell {i}: neighbor sets differ by more than ties"
+        def dists(s, p=pts[i]):
+            return sorted(round(math.hypot(a - p[0], b - p[1]), 6) for a, b in s)
+        assert dists(ours - theirs) == dists(theirs - ours), f"cell {i}: neighbor sets differ beyond ties"
 
 
 @pytest.mark.parametrize("xp", XPS)
@@ -148,7 +149,7 @@ def test_cosim_mm1_matches_gstatsim_and_leaves_vario_alone(with_secondary):
     vario = [30, 0.1, 8000.0, 4000.0, 1.0, "Spherical"]
     kw = dict(num_points=32, radius=9000, corrcoef=0.6)
     gpu = simulation.cosim_mm1(df1, df2, pts, vario, seeds=[7, 8], backend="gpu", **kw)
-    for row, seed in zip(gpu, (7, 8)):
+    for row, seed in zip(gpu, (7, 8), strict=True):
         np.testing.assert_allclose(row, simulation.cosim_mm1(df1, df2, pts, vario, seed=seed, **kw),
                                    rtol=0, atol=1e-6)
     assert vario[4] == 1.0  # GStatSim itself would have overwritten the sill

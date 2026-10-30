@@ -60,7 +60,7 @@ def test_ensemble_rows_match_gstatsim_per_seed(xp, field):
     vario = [20, 0.0, 6000.0, 3000.0, 1.0, "Exponential"]
     seeds = [3, 11, 42]
     ens = ensemble(xp, df, pts, vario, "simple", seeds)
-    for row, seed in zip(ens, seeds):
+    for row, seed in zip(ens, seeds, strict=True):
         ref = simulation.sgs(df, pts, vario, num_points=16, radius=8000, seed=seed)
         np.testing.assert_allclose(row, ref, rtol=0, atol=1e-6)
 
@@ -98,7 +98,7 @@ def test_cluster_sgs_matches_gstatsim(clustered):
     df, pts, varios = clustered
     kw = dict(num_points=24, radius=9000)
     ens = simulation.cluster_sgs(df, pts, varios, seeds=[7, 8], backend="gpu", **kw)
-    for row, seed in zip(ens, (7, 8)):
+    for row, seed in zip(ens, (7, 8), strict=True):
         ref = simulation.cluster_sgs(df, pts, varios, seed=seed, **kw)
         np.testing.assert_allclose(row, ref, rtol=0, atol=1e-6)
 

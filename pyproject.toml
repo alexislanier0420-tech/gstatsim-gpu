@@ -5,8 +5,19 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "gstatsim-accel"
 version = "0.1.0"
-description = "Opt-in CPU/GPU backends for GStatSim kriging and simulation"
+description = "GPU backends (CuPy + CUDA) for GStatSim kriging and sequential Gaussian simulation"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Alexis McGill" }]
 requires-python = ">=3.10"
+keywords = ["geostatistics", "kriging", "gaussian-process", "gpu", "cuda", "cupy", "glaciology"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Intended Audience :: Science/Research",
+]
 dependencies = [
     # The CPU backend is GStatSim itself; record the installed version in every benchmark.
     "gstatsim>=1.2.0",
@@ -22,10 +33,23 @@ dependencies = [
 # [ctk] pulls in cuBLAS/cuSOLVER; without it CuPy sees the GPU but can't solve.
 gpu = ["cupy-cuda12x[ctk]>=13.4"]
 bench = ["scikit-gstat", "psutil"]
-dev = ["pytest>=7"]
+dev = ["pytest>=7", "ruff"]
+
+[project.urls]
+Repository = "https://github.com/alexislanier0420-tech/gstatsim-gpu"
+GStatSim = "https://github.com/GatorGlaciology/GStatSim"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, import order, bugbear, modern-syntax upgrades
+select = ["E", "F", "W", "I", "B", "UP"]

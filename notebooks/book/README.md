@@ -23,7 +23,7 @@ The book's times come from a different computer, so compare the ratios, not the 
 **Not converted:** chapters 1–2 (variograms), which run in seconds already.
 
 **Changes beyond the swapped calls:**
-- Chapters 4–7 and 9 define variograms without a model type, which only the first
+- Chapters 3–9 define variograms without a model type, which only the first
   GStatSim (exponential-only) accepted. The GPU versions add `'Exponential'`, the
   model those chapters fit.
 - Chapter 4's two extra realizations run in one `simulation.realizations` call

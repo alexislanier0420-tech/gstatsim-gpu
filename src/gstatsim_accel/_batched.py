@@ -13,10 +13,9 @@ from __future__ import annotations
 
 import math
 
+import gstatsim as gs
 import numpy as np
 from scipy.special import gamma, kv
-
-import gstatsim as gs
 
 # GStatSim's octant bin edges (NearestNeighbor.nearest_neighbor_search),
 # built from the same float expressions so the edges are bit-identical.
@@ -47,7 +46,8 @@ def covariance(xp, lag, vario):
         s = float(vario[6])
         scale = 0.45246434 * np.exp(-0.70449189 * s) + 1.7863836
         eff = np.where(lag == 0.0, 1e-8, lag)
-        c = c_struct * 2 / gamma(s) * np.power(scale * eff * np.sqrt(s), s) * kv(s, 2 * scale * eff * np.sqrt(s))
+        arg = scale * eff * np.sqrt(s)
+        c = c_struct * 2 / gamma(s) * np.power(arg, s) * kv(s, 2 * arg)
         return np.where(np.isnan(c), c_struct, c)
     raise ValueError(f"unknown vtype {vario[5]!r}")
 

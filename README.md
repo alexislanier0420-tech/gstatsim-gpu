@@ -2,6 +2,8 @@
 
 # 🧊⚡ gstatsim-accel: GPU-accelerated bed topography mapping
 
+[![CI](https://github.com/alexislanier0420-tech/gstatsim-gpu/actions/workflows/ci.yml/badge.svg)](https://github.com/alexislanier0420-tech/gstatsim-gpu/actions/workflows/ci.yml) ![Python 3.10–3.12](https://img.shields.io/badge/python-3.10%E2%80%933.12-blue) ![CUDA](https://img.shields.io/badge/GPU-CUDA%20%2B%20CuPy-76b900) ![License: MIT](https://img.shields.io/badge/license-MIT-green)
+
 **Same geostatistics, faster.** This project adds an opt-in GPU backend to
 [GStatSim](https://github.com/GatorGlaciology/GStatSim) so kriging and sequential
 Gaussian simulation (SGS) of subglacial topography can run on an NVIDIA GPU, with
@@ -154,6 +156,16 @@ python benchmarks/bench_kriging.py --csv data/greenland_test_data.csv --method s
 ```
 
 **On HiPerGator:** see [docs/hipergator.md](docs/hipergator.md).
+
+### Development
+
+```bash
+pip install -e ".[dev]"     # pytest + ruff
+pytest                      # GPU tests skip automatically without a CUDA GPU
+ruff check .                # lint (also runs in CI and as a pre-commit hook)
+```
+
+Every push runs the linter and the tests on Python 3.10–3.12 (GitHub Actions).
 
 ### Dependencies
 

@@ -1,8 +1,8 @@
+import gstatsim as gs
 import numpy as np
 import pandas as pd
 import pytest
 
-import gstatsim as gs
 from gstatsim_accel import BackendUnavailableError, backend, kriging
 
 

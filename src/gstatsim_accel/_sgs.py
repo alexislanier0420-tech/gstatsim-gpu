@@ -15,9 +15,8 @@ consumes the generator exactly like drawing standard normals up front.
 
 from __future__ import annotations
 
-import numpy as np
-
 import gstatsim as gs
+import numpy as np
 
 from ._batched import OCTANT_EDGES, estimate, kriging_systems, to_numpy
 
@@ -64,7 +63,7 @@ def sgs_ensemble(xp, points, X, Y, Z, vario, num_points, radius, ordinary, seeds
     # when the nugget is 0 (1.2.0 kriges those nodes otherwise).
     first_datum = {}
     if float(vario[1]) == 0:
-        for i, xy in enumerate(zip(X, Y)):
+        for i, xy in enumerate(zip(X, Y, strict=True)):
             first_datum.setdefault(xy, i)
     datum_of = np.array([first_datum.get((x, y), -1) for x, y in points])
 
