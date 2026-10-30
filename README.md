@@ -40,8 +40,13 @@ parallelism. (f) Variogram cost grows as N².*
   points (octant search, as in GStatSim). Cells are independent, so the GPU builds
   and solves thousands of small kriging systems at once.
 - **SGS:** cells are simulated along a random path, each one conditioned on the data
-  *and* on the cells simulated before it. The GPU version must keep that order, so it
-  speeds up the work within each step rather than skipping the dependency.
+  *and* on the cells simulated before it. The GPU version keeps that order exactly.
+  Its parallelism comes from running many realizations side by side, one node each
+  per step, which you need anyway to map uncertainty.
+- **Data:** radar bed (BedMachine surface minus Bedmap3 radar ice thickness) plus
+  rock outcrops, where the bed is the surface, gridded to 1 km. A smooth trend is
+  removed, the residuals are normal-score transformed, and simulation covers rock
+  and grounded ice (not the George VI Ice Shelf, where there are no bed data).
 - **One API, two backends:**
   ```python
   from gstatsim_accel import kriging
@@ -56,13 +61,49 @@ parallelism. (f) Variogram cost grows as N².*
 
 ## 📊 Results
 
-> 🚧 **In progress.** Planned figures: CPU vs GPU runtime across grid sizes, CPU–GPU
-> difference maps, and Rubble Glacier bed realizations (`figures/realizations/`).
+### 🏔️ Rubble Glacier bed: 20 SGS realizations on the GPU
 
-First measurement (laptop CPU, Tutorial 3 data): GStatSim simple kriging takes
-**~10 ms per grid cell**, and **~80% of that is the neighbor search**, not the
-linear algebra. That's why the GPU version batches the neighbor search as well as
-the solves. Details: [docs/existing_port_review.md](docs/existing_port_review.md).
+![Six SGS realizations](figures/realizations/realizations_panel.png)
+
+Each map is an equally likely bed that honors the radar and rock-outcrop data and the
+variogram. Where they disagree is where the bed is uncertain:
+
+![Ensemble mean, standard deviation, and difference from BedMachine](figures/realizations/ensemble_mean_sd.png)
+
+*Left: ensemble mean. Middle: standard deviation; near zero along radar flight lines
+and on rock, larger between them. Right: ensemble mean minus BedMachine v3 (mean
+absolute difference 110 m).* The realizations reproduce the data's histogram and
+variogram ([figures/results/realization_checks.png](figures/results/realization_checks.png)).
+
+### ⚡ Speed (laptop, NVIDIA RTX 5060 8 GB)
+
+| Workload | GStatSim 1.2.0 | Our NumPy version | **GPU** |
+|---|---|---|---|
+| Tutorial 3 simple kriging, 22,500 cells | 158 s | 19.8 s | **0.91 s (173×)** |
+| Tutorial 3 SGS, 1,600 cells, per realization | 24.9 s | 2.9 s | 14.9 s alone; **0.31 s with 50 together (80×)** |
+| Rubble Glacier simple kriging, 40,000 cells | ~2 min (est.) | — | **2.3 s (~53×)** |
+| Rubble Glacier SGS, 30,750 cells, per realization | 146 s | — | 90 s alone; **6.0 s with 50 together (24×)** |
+
+The GPU only speeds up SGS when many realizations run together: SGS is
+sequential within a realization, so one realization on its own is *slower* on the
+GPU than on the CPU. Full log: [TRACKER.md](TRACKER.md#benchmark-log).
+
+### ✅ Does the GPU give the same answers?
+
+Yes, judged by criteria written down *before* any GPU result
+([TRACKER.md](TRACKER.md#acceptance-criteria-written-2026-10-29-before-gpu-results)):
+
+- Kriging and fixed-seed SGS match GStatSim to **~1e-13** whenever the choice of
+  neighbors is unambiguous.
+- Where two data points are exactly equidistant, GStatSim's pick between them is
+  arbitrary (its sort isn't stable); here the earlier data row wins. Every
+  differing cell checked was such a tie.
+- On a grid, ties make single SGS realizations diverge, so whole ensembles were
+  compared: GPU and GStatSim ensembles agree in mean, variance and variogram as well
+  as two GStatSim ensembles agree with each other.
+
+Profiling showed **~80% of GStatSim's kriging time is its neighbor search**, not the
+linear algebra, so the GPU version batches the search as well as the solves.
 
 ## 🚀 Getting started
 
@@ -78,6 +119,13 @@ python scripts/env_report.py --label mymachine   # checks the GPU works
 No NVIDIA GPU? Delete the `cupy-cuda12x[ctk]` line from `environment.yml` first;
 the CPU backend works without it.
 
+**Run the notebook:** register the env as a Jupyter kernel once, then open
+`notebooks/rubble_glacier_workflow.ipynb` and pick **Python (gstatsim-gpu)**:
+
+```bash
+python -m ipykernel install --user --name gstatsim-gpu --display-name "Python (gstatsim-gpu)"
+```
+
 **Tutorial 3 benchmark** (data: `demos/data/greenland_test_data.csv` from the
 GStatSim repo, copied to `data/`):
 
@@ -90,26 +138,34 @@ python benchmarks/bench_kriging.py --csv data/greenland_test_data.csv --method s
 ### Dependencies
 
 Python 3.12 · GStatSim 1.1.5 · NumPy 2.2 · pandas 2.2 · SciPy 1.15 · scikit-learn 1.6 ·
-scikit-gstat · tqdm · psutil · pytest · CuPy 14 (`cupy-cuda12x[ctk]`, GPU only).
+scikit-gstat · matplotlib · Jupyter (ipykernel, nbconvert) · tqdm · psutil · pytest · CuPy 14 (`cupy-cuda12x[ctk]`, GPU only).
 Exact versions are in [environment.yml](environment.yml).
 
 ## 📁 Files
 
 | Path | What it does |
 |---|---|
+| `notebooks/rubble_glacier_workflow.ipynb` | **The full workflow**: data → trend → variogram → GPU kriging → SGS ensemble → figures |
 | `src/gstatsim_accel/kriging.py` | `predict()`: the notebook-facing kriging function; picks the CPU or GPU backend |
+| `src/gstatsim_accel/simulation.py` | `sgs()` and `realizations()`: SGS, one or many realizations, CPU or GPU |
+| `src/gstatsim_accel/_batched.py` | Batched octant search and kriging, written once for NumPy and CuPy |
+| `src/gstatsim_accel/_sgs.py` | SGS that steps many realizations together on the GPU, keeping GStatSim's exact algorithm |
 | `src/gstatsim_accel/backend.py` | Detects whether a usable GPU is present; raises `BackendUnavailableError` if not |
 | `src/gstatsim_accel/validation.py` | Checks inputs (shapes, NaNs, variogram, search settings) before either backend runs |
 | `src/gstatsim_accel/bench.py` | Benchmark timing (warm-up, repeats) and JSON run records |
 | `src/gstatsim_accel/envinfo.py` | Collects hardware and software versions for each record |
 | `benchmarks/bench_kriging.py` | Runs the Tutorial 3 kriging workload; saves timings and outputs |
 | `benchmarks/compare_outputs.py` | Compares two runs' outputs (e.g. CPU vs GPU) against a tolerance |
+| `benchmarks/bench_rubble_sgs.py` | Times one full GStatSim SGS realization vs GPU ensembles on the Rubble Glacier inputs |
+| `benchmarks/validate_sgs_ensemble.py` | Checks GPU SGS ensembles against two GStatSim ensembles (statistics + variogram) |
+| `figures/realizations/` | Bed realizations, ensemble mean and standard deviation maps |
+| `figures/results/` | Input map, variogram, kriging maps and realization checks from the notebook |
 | `scripts/env_report.py` | Environment report plus a GPU smoke test |
 | `scripts/hpg/env_report.sbatch` | Runs the environment report on a HiPerGator L4 GPU |
-| `tests/` | Unit tests: backend selection, input checks, CPU output = GStatSim, benchmark tools |
-| `figures/prep_map_data.py` | Crops BedMachine and Bedmap3 to the study area for the figure |
+| `tests/` | 70 tests: GPU and NumPy kriging/SGS vs GStatSim, tie handling, backend selection, input checks |
+| `figures/prep_map_data.py` | Crops BedMachine and Bedmap3 to the study area (radar bed, rock outcrops, mask) |
 | `figures/make_method_figure.py` | Draws `method_figure.png/.pdf/.svg` (above) |
-| `figures/data/` | Small cropped arrays the figure script reads |
+| `figures/data/` | The cropped study-area data (0.7 MB) the notebook and figure read |
 | `docs/existing_port_review.md` | Review of an earlier CuPy port of GStatSim, and the first CPU profile |
 | `docs/hipergator.md` | Course HiPerGator limits, setup and job submission |
 | `TRACKER.md` | Project plan, milestones, open questions, decisions and benchmark log |

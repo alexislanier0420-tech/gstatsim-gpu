@@ -1,0 +1,118 @@
+"""Notebook-facing sequential Gaussian simulation with explicit CPU/GPU backend."""
+
+from __future__ import annotations
+
+import numbers
+
+import numpy as np
+
+from . import validation
+from .backend import resolve_backend
+
+
+def sgs(
+    conditioning_data,
+    prediction_points,
+    variogram,
+    *,
+    num_points: int,
+    radius: float,
+    method: str = "simple",
+    seed: int | None = None,
+    backend: str = "cpu",
+    xx: str = "X",
+    yy: str = "Y",
+    zz: str = "Z",
+    quiet: bool = True,
+) -> np.ndarray:
+    """One SGS realization at prediction_points (same inputs as kriging.predict).
+
+    seed : int or None
+        Same seed and inputs -> same random path and random draws on either
+        backend. Realizations then agree to ~1e-12 except where equidistant
+        neighbors tie (see kriging.predict); a tie changes that node and,
+        through it, later nodes, so compare gridded runs as ensembles.
+
+    Returns
+    -------
+    numpy.ndarray, shape (M,)
+        Simulated values in the units of zz (usually normal scores).
+    """
+    backend = resolve_backend(backend)
+    method = validation.check_method(method)
+    points = validation.check_prediction_points(prediction_points)
+    df = validation.check_conditioning_data(conditioning_data, xx, yy, zz)
+    vario = validation.check_variogram(variogram)
+    validation.check_search(num_points, radius)
+    if seed is not None and (not isinstance(seed, numbers.Integral) or isinstance(seed, bool)):
+        raise ValueError(f"seed must be an integer or None, got {seed!r}")
+
+    if len(points) == 0:
+        return np.empty(0)
+
+    if backend == "cpu":
+        import gstatsim as gs
+
+        f = gs.Interpolation.skrige_sgs if method == "simple" else gs.Interpolation.okrige_sgs
+        return np.asarray(f(points, df, "X", "Y", "Z", num_points, vario, radius,
+                            seed=seed, quiet=quiet), dtype=np.float64)
+
+    if vario[5].lower() == "matern":
+        raise NotImplementedError("Matern covariance isn't supported on the GPU yet; use backend='cpu'")
+    import cupy as cp
+
+    from . import _sgs
+
+    return _sgs.sgs(cp, points, df["X"].to_numpy(), df["Y"].to_numpy(), df["Z"].to_numpy(),
+                    vario, num_points, radius, ordinary=(method == "ordinary"), seed=seed,
+                    global_mean=float(df["Z"].mean()))
+
+
+def realizations(
+    conditioning_data,
+    prediction_points,
+    variogram,
+    *,
+    seeds,
+    num_points: int,
+    radius: float,
+    method: str = "simple",
+    backend: str = "cpu",
+    xx: str = "X",
+    yy: str = "Y",
+    zz: str = "Z",
+    quiet: bool = True,
+) -> np.ndarray:
+    """One SGS realization per seed; returns shape (len(seeds), M).
+
+    Row i equals sgs(..., seed=seeds[i]). On the GPU all realizations are
+    simulated together, one node each per step, which is where the speedup
+    comes from; on the CPU they run one after another through GStatSim.
+    """
+    seeds = list(seeds)
+    if not seeds or not all(isinstance(s, numbers.Integral) and not isinstance(s, bool) for s in seeds):
+        raise ValueError("seeds must be a non-empty list of integers")
+    backend = resolve_backend(backend)
+    if backend == "cpu":
+        return np.stack([
+            sgs(conditioning_data, prediction_points, variogram, num_points=num_points, radius=radius,
+                method=method, seed=s, xx=xx, yy=yy, zz=zz, quiet=quiet)
+            for s in seeds
+        ])
+
+    method = validation.check_method(method)
+    points = validation.check_prediction_points(prediction_points)
+    df = validation.check_conditioning_data(conditioning_data, xx, yy, zz)
+    vario = validation.check_variogram(variogram)
+    validation.check_search(num_points, radius)
+    if vario[5].lower() == "matern":
+        raise NotImplementedError("Matern covariance isn't supported on the GPU yet; use backend='cpu'")
+    if len(points) == 0:
+        return np.empty((len(seeds), 0))
+    import cupy as cp
+
+    from . import _sgs
+
+    return _sgs.sgs_ensemble(cp, points, df["X"].to_numpy(), df["Y"].to_numpy(), df["Z"].to_numpy(),
+                             vario, num_points, radius, ordinary=(method == "ordinary"), seeds=seeds,
+                             global_mean=float(df["Z"].mean()))

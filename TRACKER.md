@@ -20,7 +20,7 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 - [ ] Full Tutorial 3 baseline, SK and OK, 3 repeats (laptop + HiPerGator CPU)
 - [ ] Profile by component (early result: neighbor search ~79%; see review doc)
 - [ ] Tutorial 4 SGS baseline at a manageable size
-- [ ] **Write tolerances before Phase 2** (see Decisions)
+- [x] **Write tolerances before Phase 2** (see Acceptance criteria)
 - [ ] Decide whether to also benchmark an optimized CPU path (KD-tree)
 
 ### Phase 2: GPU prototype (Nov 9 – 15) · Gate 3 Nov 15
@@ -54,12 +54,69 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 | 10-29 | GStatSim's octant search is the target semantics for the GPU path | Prior port uses plain K-nearest and doesn't match |
 | 10-29 | GPU target hardware: HiPerGator L4 (24 GB) + laptop RTX 5060 (8 GB) | Courses may use only L4s |
 | 10-29 | HPG job I/O in `/blue/<course>/<user>`, code + env in home | RC storage policy |
-| — | Kriging tolerance (normal-score units): est ___, var ___ | Set in Phase 1, before GPU results exist |
+| 10-29 | Reference is GStatSim **1.2.0** (was 1.1.5) | 1.2.0 fixes the spherical model and puts the nugget on the kriging diagonal |
+| 10-29 | Neighbor ties broken by data row order (stable sort) | GStatSim's sort is unstable, so its choice among equidistant points is arbitrary |
+| 10-29 | **Tolerances, set before any GPU result** (normal-score units) — see below | Gate 2 |
+
+### Acceptance criteria (written 2026-10-29, before GPU results)
+1. **Kriging, scattered data (no distance ties):** GPU vs GStatSim, every cell
+   |Δest| ≤ 1e-6 and |Δvar| ≤ 1e-6. Differences can only come from LU vs `lstsq`
+   and distance rounding.
+2. **Kriging, gridded data (ties):** a cell may differ when equidistant points
+   compete for the last slot in an octant, or a point sits exactly on an octant
+   boundary. The noise floor is GStatSim vs GStatSim run on the same data with
+   rows shuffled. Pass if the share of cells with |Δ| > 1e-6 (GPU vs GStatSim) is
+   no larger than that noise floor, and every other cell is within 1e-6.
+3. **SGS, fixed seed, scattered prediction points:** same seed gives the same
+   path and the same random draws, so GPU vs GStatSim realization must agree to
+   1e-6 at every node.
+4. **SGS, grid:** ties make single realizations diverge, so compare ensembles
+   (≥ 20 realizations each): mean, variance and variogram of the realizations
+   must agree within the spread between two independent GStatSim ensembles.
+
+### Results against the criteria
+- **Criterion 1: pass.** Scattered data, 4 variogram setups (exponential, spherical,
+  Gaussian; nugget 0–0.2; 30° anisotropy), SK and OK, NumPy and GPU: max |Δ| ≤ 6e-13.
+- **Criterion 2: narrow fail as written** (2026-10-29, Tutorial 3 data, 1,500 cells,
+  k=100, r=50 km). Cells with |Δ| > 1e-6: GStatSim vs GStatSim-shuffled 5.80% (SK) /
+  5.87% (OK); ours vs GStatSim 6.20% (SK and OK; NumPy and GPU identical).
+  Diagnosis of all 93 differing SK cells: **93 are equidistant-point swaps, 0 have
+  the same neighbors with a different answer, 0 unexplained.** The noise floor is
+  itself one random shuffle, so a single-sample threshold is fragile.
+- **Criterion 3: pass** where there are no ties (fixed seed, scattered nodes, SK/OK,
+  NumPy and GPU, max |Δ| ≈ 2e-13; also for 3 realizations stepped together). With
+  nugget > 0, GStatSim 1.2.0 simulates nodes that sit on data and adds them to the
+  conditioning set, creating two points at one location that always tie; there a
+  realization diverges at the first tie (confirmed: path step 103, octant 6).
+- **Criterion 4: pass** (Tutorial 3 data, 30×30 nodes, 3 × 20 realizations with
+  disjoint seeds; Welch t-test per statistic, α = 0.01/6). GPU vs GStatSim p-values
+  0.58–0.90 for mean, variance and semivariance at 2/5/10/20 km; GStatSim A vs B
+  0.43–0.88. Record: `results/validation/sgs_ensemble_criterion4.json`.
+- **Proposed amendment (written after seeing the results; needs your sign-off):**
+  replace criterion 2 with "every cell with |Δ| > 1e-6 is explained by an
+  equidistant swap or octant-edge point, and no cell with an identical neighbor set
+  differs by more than 1e-6". This is now checked automatically in the tests.
 
 ## Benchmark log
 | Date | Machine | Workload | Backend | Points | Median | Per point | Correctness | Record |
 |---|---|---|---|---|---|---|---|---|
-| 10-29 | Laptop (Intel, 24 thr) | Tut3 SK, k=100, r=50 km | cpu | 500 | 4.85 s | 9.7 ms | reference | smoke test, 1 repeat |
+| 10-29 | Laptop (Intel, 24 thr) | Tut3 SK, k=100, r=50 km | cpu | 500 | 4.85 s | 9.7 ms | reference | smoke test, 1 repeat, GStatSim 1.1.5 |
+| 10-29 | Laptop | Tut3 SK, full grid | GStatSim 1.2.0 | 22,500 | 157.6 s | 7.0 ms | reference | 1 repeat |
+| 10-29 | Laptop | Tut3 SK, full grid | cpu-batched (NumPy) | 22,500 | 19.8 s | 0.88 ms | crit. 1–2 | 3 repeats |
+| 10-29 | Laptop RTX 5060 | Tut3 SK, full grid | gpu | 22,500 | **0.91 s** | 0.040 ms | crit. 1–2 | 5 repeats; first call +5.3 s start-up |
+| 10-29 | Laptop | Tut3 OK, full grid | GStatSim 1.2.0 | 22,500 | ~~11,025 s~~ | — | — | **invalid**: laptop likely slept (ran 22:44–01:46); rerun |
+| 10-29 | Laptop | Tut3 OK, full grid | cpu-batched (NumPy) | 22,500 | 20.8 s | 0.93 ms | crit. 1–2 | 3 repeats |
+| 10-29 | Laptop RTX 5060 | Tut3 OK, full grid | gpu | 22,500 | **1.00 s** | 0.045 ms | crit. 1–2 | 5 repeats |
+| 10-29 | Laptop | Tut3 SGS, 40×40 sub-grid | GStatSim 1.2.0 | 1,600 | 24.9 s / realization | 15.6 ms | reference | 1 run |
+| 10-29 | Laptop | Tut3 SGS, 40×40 | NumPy (ours) | 1,600 | 2.9 s / realization | 1.8 ms | crit. 3 | 1 run |
+| 10-29 | Laptop RTX 5060 | Tut3 SGS, 40×40 | gpu, 1 realization | 1,600 | 14.9 s | 9.3 ms | crit. 3 | **GPU slower than NumPy** for a single realization |
+| 10-29 | Laptop RTX 5060 | Tut3 SGS, 40×40 | gpu, 50 together | 1,600 | **0.31 s / realization** | — | crit. 3–4 | 15.3 s for all 50 |
+| 10-30 | Laptop RTX 5060 | Rubble SK, 1 km, 40,000 nodes | gpu | 40,000 | 2.3 s | 0.058 ms | 92.3% of 1,000 checked nodes within 1e-6, rest ties | notebook run; GStatSim 3.1 ms/node on the 1,000 → ~2 min est. |
+| 10-30 | Laptop RTX 5060 | Rubble SGS, 30,750 nodes | gpu, 20 together | 30,750 | 12 s / realization | — | crit. 3–4 | notebook run, 4.0 min for all 20 |
+| 10-30 | Laptop | Rubble SGS, 30,750 nodes | GStatSim 1.2.0 | 30,750 | **145.7 s / realization** | 4.7 ms | reference | `bench_rubble_sgs.py`, 1 realization |
+| 10-30 | Laptop RTX 5060 | Rubble SGS | gpu, 1 alone | 30,750 | ~~11,008 s~~ | — | — | **invalid**: laptop slept (third overnight stall); rerun below |
+| 10-30 | Laptop RTX 5060 | Rubble SGS | gpu, 1 alone | 30,750 | 89.9 s | 2.9 ms | crit. 3–4 | rerun 10:31–10:37, laptop attended |
+| 10-30 | Laptop RTX 5060 | Rubble SGS | gpu, 50 together | 30,750 | **6.0 s / realization (24×)** | — | crit. 3–4 | 299 s for all 50 |
 
 ## Risks to watch
 - Data: `glacier_lab1.nc` may still hold the Marie Byrd Land crop; check extent before using lab outputs.
@@ -67,4 +124,6 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 - Only 2 L4s for the whole course: GPU jobs may queue, especially near deadlines. Run final benchmarks early.
 - Course shares 32 cores / 256 GB: keep CPU baseline jobs small (≤ 8 cores) and short.
 - HiPerGator storage isn't backed up and course accounts are deleted after the semester.
+- The laptop sleeps during long unattended runs (3 invalid timings so far). Final
+  benchmarks should run on HiPerGator, or on the laptop with sleep disabled.
 - A GPU speedup over pandas-bound GStatSim may mostly measure Python overhead; report against an optimized CPU path too.

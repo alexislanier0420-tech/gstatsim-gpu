@@ -45,8 +45,11 @@ def predict(
         Neighbor search radius.
     method : {"simple", "ordinary"}
     backend : {"cpu", "gpu"}
-        "gpu" raises BackendUnavailableError if CuPy or a CUDA device is
-        missing; it never falls back to the CPU on its own.
+        "cpu" runs GStatSim itself. "gpu" runs a batched CuPy version that
+        matches it to ~1e-12, except where equidistant points tie for a
+        neighbor slot (GStatSim's pick is arbitrary there; ties here go to the
+        earlier data row). "gpu" raises BackendUnavailableError if CuPy or a
+        CUDA device is missing; it never falls back to the CPU on its own.
 
     Returns
     -------
@@ -78,7 +81,16 @@ def _predict_cpu(df, points, vario, num_points, radius, method, quiet):
 
 
 def _predict_gpu(df, points, vario, num_points, radius, method):
-    raise NotImplementedError(
-        "GPU kriging is not implemented yet (Phase 2, Nov 9-15). "
-        "Use backend='cpu' for now."
+    if vario[5].lower() == "matern":
+        raise NotImplementedError("Matern covariance isn't supported on the GPU yet; use backend='cpu'")
+    import cupy as cp
+
+    from . import _batched
+    est, var = _batched.krige(
+        cp, points, df["X"].to_numpy(), df["Y"].to_numpy(), df["Z"].to_numpy(), vario,
+        num_points, radius, ordinary=(method == "ordinary"),
+        # Same pandas mean GStatSim uses, so simple kriging's mean is bit-identical.
+        global_mean=float(df["Z"].mean()),
     )
+    var[var < 0] = 0
+    return est, var

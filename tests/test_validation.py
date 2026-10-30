@@ -62,8 +62,8 @@ def test_bad_search_and_method(kw, msg):
         predict(**kw)
 
 
-def test_gpu_not_implemented_when_available(monkeypatch):
-    # Pretend a GPU is present so the call reaches the GPU stub.
+def test_matern_rejected_on_gpu(monkeypatch):
+    # Pretend a GPU is present so the call reaches the GPU path.
     monkeypatch.setattr("gstatsim_accel.kriging.resolve_backend", lambda b: b)
-    with pytest.raises(NotImplementedError, match="Phase 2"):
-        predict(backend="gpu")
+    with pytest.raises(NotImplementedError, match="Matern"):
+        predict(vario=[0, 0, 1000.0, 1000.0, 1.0, "Matern", 1.5], backend="gpu")

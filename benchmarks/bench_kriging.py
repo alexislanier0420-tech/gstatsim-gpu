@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 import gstatsim as gs
-from gstatsim_accel import bench, kriging
+from gstatsim_accel import _batched, bench, kriging
 
 
 def prepare(csv: Path, res: float, value_col: str, max_value: float | None, seed: int):
@@ -58,7 +58,9 @@ def main(argv=None) -> int:
     p.add_argument("--max-value", type=float, default=700.0, help="drop values above this (Tutorial 3: 700)")
     p.add_argument("--res", type=float, default=1000.0)
     p.add_argument("--method", choices=["simple", "ordinary"], default="simple")
-    p.add_argument("--backend", choices=["cpu", "gpu"], default="cpu")
+    p.add_argument("--backend", choices=["cpu", "cpu-batched", "gpu"], default="cpu",
+                   help="cpu = GStatSim itself; cpu-batched = our vectorized NumPy version "
+                        "(the fair CPU baseline for the GPU); gpu = CuPy")
     p.add_argument("-k", "--num-points", type=int, default=100)
     p.add_argument("--radius", type=float, default=50_000.0)
     p.add_argument("--vario", nargs=6, metavar=("AZ", "NUG", "MAJ", "MIN", "SILL", "VTYPE"),
@@ -83,9 +85,15 @@ def main(argv=None) -> int:
     result = {}
 
     def run():
-        result["est"], result["var"] = kriging.predict(
-            df_grid, pred, vario, num_points=a.num_points, radius=a.radius,
-            method=a.method, backend=a.backend, zz="NZ")
+        if a.backend == "cpu-batched":
+            est, var = _batched.krige(
+                np, pred, df_grid["X"].to_numpy(), df_grid["Y"].to_numpy(), df_grid["NZ"].to_numpy(),
+                vario, a.num_points, a.radius, a.method == "ordinary", float(df_grid["NZ"].mean()))
+            result["est"], result["var"] = est, np.where(var < 0, 0, var)
+        else:
+            result["est"], result["var"] = kriging.predict(
+                df_grid, pred, vario, num_points=a.num_points, radius=a.radius,
+                method=a.method, backend=a.backend, zz="NZ")
 
     timing = bench.time_call(run, backend=a.backend, warmup=a.warmup, repeats=a.repeats)
 

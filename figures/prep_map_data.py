@@ -32,7 +32,7 @@ np.savez_compressed(out / "antarctica_mask_5km.npz",
 # Study area, same steps as Lab 1
 x_slice = slice(XMIN, XMAX) if bm.x[0] < bm.x[-1] else slice(XMAX, XMIN)
 y_slice = slice(YMIN, YMAX) if bm.y[0] < bm.y[-1] else slice(YMAX, YMIN)
-glacier = bm.sel(x=x_slice, y=y_slice)[["mask", "surface"]].load()
+glacier = bm.sel(x=x_slice, y=y_slice)[["mask", "surface", "bed"]].load()
 
 ant = np.arange(-3_333_250, 3_333_250 + RES, RES)
 xi = [int(np.where(ant == v)[0][0]) for v in (XMIN, XMAX)]
@@ -44,11 +44,17 @@ assert thick.shape == glacier["surface"].shape, (thick.shape, glacier["surface"]
 mask = glacier["mask"].values.astype("int8")
 radar_bed = glacier["surface"].values - np.flipud(thick)
 radar = np.isfinite(radar_bed) & (mask == 2)
+# On ice-free rock (mask 1) the bed is the surface: exact conditioning data.
+rock = mask == 1
 xx, yy = np.meshgrid(glacier.x.values, glacier.y.values)
 np.savez_compressed(out / "study_area.npz",
                     x=glacier.x.values, y=glacier.y.values, mask=mask,
                     radar_x=xx[radar], radar_y=yy[radar],
-                    radar_bed=radar_bed[radar].astype("float32"))
+                    radar_bed=radar_bed[radar].astype("float32"),
+                    rock_x=xx[rock], rock_y=yy[rock],
+                    rock_bed=glacier["surface"].values[rock].astype("float32"),
+                    # For comparison only, never used as conditioning data.
+                    bedmachine_bed=glacier["bed"].values.astype("float32"))
 print("grid", mask.shape, "mask classes", np.unique(mask),
-      "| radar cells on grounded ice:", int(radar.sum()),
+      "| radar cells on grounded ice:", int(radar.sum()), "| rock cells:", int(rock.sum()),
       "| bed range", float(np.nanmin(radar_bed[radar])), float(np.nanmax(radar_bed[radar])))

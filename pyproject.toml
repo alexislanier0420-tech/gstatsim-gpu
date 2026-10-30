@@ -9,7 +9,7 @@ description = "Opt-in CPU/GPU backends for GStatSim kriging and simulation"
 requires-python = ">=3.10"
 dependencies = [
     # The CPU backend is GStatSim itself; record the installed version in every benchmark.
-    "gstatsim>=1.1.5",
+    "gstatsim>=1.2.0",
     "numpy>=1.24",
     "pandas>=1.5",
     "scipy>=1.10",

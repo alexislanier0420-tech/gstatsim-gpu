@@ -1,6 +1,9 @@
 # Review: existing GPU port (badger-lord/gstatsim_gpu)
 
 Reviewed 2026-10-29 against GStatSim `8d7804b` (v1.2.0; the course env has 1.1.5).
+**Correction (same day):** items 3 and 4 were first listed as port bugs. The port
+actually matches GStatSim 1.1.5, the version current when it was written; 1.2.0
+changed both. They are differences from today's GStatSim, not mistakes in the port.
 Port commit `3982187` (Feb 2026, single commit, CuPy + RAPIDS cuML, written for HiPerGator B200/L4 nodes).
 
 ## What it is
@@ -18,8 +21,8 @@ and no CPU comparison, so those figures are throughput only, not validated speed
 |---|---|---|---|---|
 | 1 | **SGS batching** | Each simulated cell is added to the conditioning data before the next cell is visited | All cells in a batch (default up to 200k) are simulated at once, conditioned only on cells from *earlier* batches | Cells in the same batch ignore each other. Changes the simulation algorithm; spatial correlation at short lags will likely be too weak. This is the "changing stochastic semantics" risk in the timeline (section 2). |
 | 2 | **Neighbor selection** | Octant search: up to `num_points // 8` nearest per 45° sector | Plain K-nearest inside the radius (`use_sector_balance`/`n_sectors` accepted but unused) | Different neighbors → different estimates, especially near data-dense flight lines. |
-| 3 | **Spherical covariance** | `(sill − nug)·(1 − 1.5h + 0.5h³)`, 0 beyond range | `sill − nug − 1.5h + 0.5h³`; `sill − 1` beyond range | **Bug.** Correct only when `sill − nug = 1` and `sill = 1`; otherwise wrong, and nonzero beyond the range. |
-| 4 | Kriging matrix diagonal | Set to full `sill` (nugget on the diagonal) | `sill − nugget` plus tiny jitter | Nugget effect dropped from the data–data matrix; differs whenever nugget > 0. |
+| 3 | Spherical covariance | 1.2.0: `(sill − nug)·(1 − 1.5h + 0.5h³)`, 0 beyond range | `sill − nug − 1.5h + 0.5h³`; `sill − 1` beyond range | **Same as GStatSim ≤ 1.1.5**, which had this formula; GStatSim fixed it in 1.2.0 (Jan 2026). Correct only when `sill − nug = 1` and `sill = 1`. Not a port bug, but outdated. |
+| 4 | Kriging matrix diagonal | 1.2.0: full `sill` (nugget on the diagonal) | `sill − nugget` plus tiny jitter | **Same as GStatSim ≤ 1.1.5**; changed in 1.2.0 ("update nugget"). Differs from 1.2.0 whenever nugget > 0. |
 | 5 | OK weights | Used as solved | Renormalized to sum to 1 after solving | Small differences; masks ill-conditioned solves instead of reporting them. |
 | 6 | `krige_gpu` output | Estimate **and** variance | Estimate only; variance computed then discarded | Can't reproduce Tutorial 3's uncertainty maps. |
 | 7 | Normal-score transform | Done by the user in the notebook | Done inside `krige_gpu`/`sgs_gpu` with cuML | Different workflow and API; cuML ties it to RAPIDS. |
@@ -40,7 +43,7 @@ distances, stencil search) can be credited and reimplemented.
 - The port's SGS throughput should not be compared directly to GStatSim's SGS
   (difference 1). If cited, label it as a different algorithm.
 - Items 2–4 are concrete test cases: the GPU backend here must match GStatSim
-  on them within tolerance.
+  1.2.0 on them within tolerance (done: see `tests/test_batched.py`).
 
 ## Early CPU profile (laptop, for Phase 1 planning)
 
