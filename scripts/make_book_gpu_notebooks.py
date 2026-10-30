@@ -23,6 +23,8 @@ CHAPTERS = {
     "3_Simple_kriging_and_ordinary_kriging.ipynb": "Simple and ordinary kriging",
     "4_Sequential_Gaussian_Simulation.ipynb": "Sequential Gaussian simulation",
     "5_interpolation_with_anisotropy.ipynb": "Interpolation with anisotropy",
+    "6_non-stationary_SGS_example1.ipynb": "Non-stationary SGS, example 1",
+    "7_non-stationary_SGS_example2.ipynb": "Non-stationary SGS, example 2",
     "8_interpolation_with_a_trend.ipynb": "Interpolation with a trend",
 }
 BOOK_URL = "https://gatorglaciology.github.io/gstatsimbook/"
@@ -31,6 +33,8 @@ KERNEL = {"name": "gstatsim-gpu", "display_name": "Python (gstatsim-gpu)", "lang
 
 CALL = re.compile(r"gs\.Interpolation\.(skrige|okrige|skrige_sgs|okrige_sgs)\("
                   r"(\w+), (\w+), '(\w+)', '(\w+)', '(\w+)', (\w+), (\w+), (\w+)\)")
+CLUSTER_CALL = re.compile(r"gs\.Interpolation\.cluster_sgs\((\w+), (\w+), '(\w+)', '(\w+)', '(\w+)', "
+                          r"'(\w+)', (\w+), (\w+), (\w+)\)")
 PROGRESS = re.compile(r"(\d+)/(\d+) \[(\d+):(\d+)<")
 
 SETUP = '''\
@@ -63,6 +67,12 @@ def replace_call(m: re.Match) -> str:
     return f"kriging.predict({common})" if not func.endswith("_sgs") else f"simulation.sgs({common})"
 
 
+def replace_cluster_call(m: re.Match) -> str:
+    grid, df, xx, yy, zz, kk, k, gamma, rad = m.groups()
+    return (f"simulation.cluster_sgs({df}, {grid}, {gamma}, num_points={k}, radius={rad}, "
+            f"cluster_col='{kk}', xx='{xx}', yy='{yy}', zz='{zz}', backend=BACKEND)")
+
+
 def book_times(cell) -> list[str]:
     """Wall times of GStatSim's progress bars in the book's executed cell."""
     text = "".join("".join(o.get("text", "")) for o in cell.get("outputs", []))
@@ -90,10 +100,15 @@ def convert(src: Path, dst: Path, title: str) -> None:
         if cell.cell_type == "code":
             src_code = cell.source
             new = CALL.sub(replace_call, src_code)
-            # The book's anisotropy chapter predates GStatSim's model-type entry
-            # (the first GStatSim was exponential-only); today's needs it.
+            new = CLUSTER_CALL.sub(replace_cluster_call, new)
+            # Several chapters predate GStatSim's model-type entry (the first
+            # GStatSim was exponential-only); today's needs it.
             new = re.sub(r"(vario\d* = \[azimuth, nugget, major_range, minor_range, sill)\]",
                          r"\1, 'Exponential']  # model type: required since GStatSim 1.1", new)
+            new = re.sub(r"^(gam\d = \[[^'\]]*)\]", r"\1, 'Exponential']", new, flags=re.M)
+            new = new.replace("var.parameters[1]] for var in variograms]",
+                              "var.parameters[1],\n            'Exponential'] for var in variograms]"
+                              "  # model type: required since GStatSim 1.1")
             sim2 = re.search(r"^sim2 = simulation\.sgs\((.*)\) *$", new, flags=re.M)
             if sim2 and re.search(r"^sim3 = simulation\.sgs\(", new, flags=re.M):
                 # Two more realizations: one call, simulated side by side on the GPU.
@@ -104,7 +119,7 @@ def convert(src: Path, dst: Path, title: str) -> None:
                     "# simulate multiple random realizations\n"
                     "# GPU version: both realizations in one call, simulated side by side\n"
                     f"sim2, sim3 = simulation.realizations({args}, seeds=[2, 3], backend=BACKEND)\n", 1)
-            if new != src_code or "rbf_trend(" in new:
+            if any(call in new for call in ("kriging.predict(", "simulation.", "rbf_trend(")):
                 times = book_times(cell)
                 note = (f"# Published book (GStatSim on CPU): {', '.join(times)}\n" if times else "")
                 new = "%%time\n" + note + new

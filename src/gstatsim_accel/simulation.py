@@ -124,3 +124,77 @@ def realizations(
     if len(points) == 0:
         return np.empty((len(seeds), 0))
     return _gpu_ensemble(df, points, vario, num_points, radius, method, seeds)
+
+
+def cluster_sgs(
+    conditioning_data,
+    prediction_points,
+    variograms,
+    *,
+    num_points: int,
+    radius: float,
+    cluster_col: str = "K",
+    seed: int | None = None,
+    seeds=None,
+    backend: str = "cpu",
+    xx: str = "X",
+    yy: str = "Y",
+    zz: str = "Z",
+    quiet: bool = True,
+) -> np.ndarray:
+    """Non-stationary SGS with a variogram per cluster (GStatSim's cluster_sgs).
+
+    variograms : list of variogram lists, or GStatSim's df_gamma DataFrame
+        (column "Variogram"). Cluster k uses variograms[k].
+    cluster_col : column of conditioning_data with each point's cluster
+        (integers 0 .. len(variograms) - 1). Each simulated node takes the
+        cluster of its nearest neighbor. Simple kriging only, as in GStatSim.
+    seed / seeds : one realization for `seed` (returns shape (M,)), or one per
+        entry of `seeds` (returns shape (len(seeds), M); simulated side by side
+        on the GPU).
+    """
+    if seeds is not None and seed is not None:
+        raise ValueError("pass either seed or seeds, not both")
+    many = seeds is not None
+    seeds = list(seeds) if many else [seed]
+    if many and (not seeds or not all(isinstance(s, numbers.Integral) and not isinstance(s, bool) for s in seeds)):
+        raise ValueError("seeds must be a non-empty list of integers")
+    if not many and seed is not None and (not isinstance(seed, numbers.Integral) or isinstance(seed, bool)):
+        raise ValueError(f"seed must be an integer or None, got {seed!r}")
+
+    backend = resolve_backend(backend)
+    points = validation.check_prediction_points(prediction_points)
+    df = validation.check_conditioning_data(conditioning_data, xx, yy, zz)
+    validation.check_search(num_points, radius)
+    if hasattr(variograms, "columns"):
+        variograms = list(variograms["Variogram"])
+    varios = [validation.check_variogram(v) for v in variograms]
+    if cluster_col not in conditioning_data.columns:
+        raise ValueError(f"conditioning_data is missing the cluster column {cluster_col!r}")
+    labels = np.asarray(conditioning_data[cluster_col], dtype=np.float64)
+    if (not np.all(np.isfinite(labels)) or np.any(labels != np.round(labels))
+            or labels.min() < 0 or labels.max() >= len(varios)):
+        raise ValueError(f"{cluster_col!r} must hold integer cluster ids from 0 to {len(varios) - 1}, "
+                         "one per variogram")
+    labels = labels.astype(np.int64)
+
+    if len(points) == 0:
+        out = np.empty((len(seeds), 0))
+    elif backend == "cpu":
+        import gstatsim as gs
+        import pandas as pd
+
+        dfk = df.assign(K=labels)
+        gamma = pd.DataFrame({"Variogram": varios})
+        out = np.stack([np.asarray(gs.Interpolation.cluster_sgs(
+            points, dfk, "X", "Y", "Z", "K", num_points, gamma, radius, seed=s, quiet=quiet), dtype=np.float64)
+            for s in seeds])
+    else:
+        from . import _sgs_cuda
+
+        out = _sgs_cuda.cluster_sgs_ensemble(
+            points, df["X"].to_numpy(), df["Y"].to_numpy(), df["Z"].to_numpy(), labels, varios,
+            num_points, radius, seeds,
+            # cluster_sgs uses np.average for the simple-kriging mean
+            global_mean=float(np.average(df["Z"].to_numpy())))
+    return out if many else out[0]

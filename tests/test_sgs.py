@@ -78,3 +78,34 @@ def test_bad_seed_rejected(field):
     df, pts = field
     with pytest.raises(ValueError, match="seed"):
         simulation.sgs(df, pts, [0, 0, 1e3, 1e3, 1.0, "Exponential"], num_points=8, radius=1e3, seed=1.5)
+
+
+@pytest.fixture(scope="module")
+def clustered():
+    rng = np.random.default_rng(2)
+    x, y = rng.uniform(0, 3e4, 300), rng.uniform(0, 3e4, 300)
+    z = np.sin(x / 5e3) + np.cos(y / 7e3) + 0.2 * rng.standard_normal(300)
+    k = (x > 1.5e4).astype(int) + 2 * (y > 2e4).astype(int)  # four quadrant-like clusters
+    pts = np.column_stack([rng.uniform(0, 3e4, 150), rng.uniform(0, 3e4, 150)])
+    pts[:3] = np.column_stack([x[:3], y[:3]])  # nodes on data copy the datum
+    varios = [[0, 0.0, 6000.0, 6000.0, 1.0, "Exponential"], [45, 0.1, 8000.0, 3000.0, 0.8, "Spherical"],
+              [90, 0.0, 5000.0, 2500.0, 1.0, "Gaussian"], [0, 0.05, 4000.0, 4000.0, 1.2, "Exponential"]]
+    return pd.DataFrame({"X": x, "Y": y, "Z": z, "K": k}), pts, varios
+
+
+@pytest.mark.skipif(not gpu_status().available, reason="no usable CUDA GPU")
+def test_cluster_sgs_matches_gstatsim(clustered):
+    df, pts, varios = clustered
+    kw = dict(num_points=24, radius=9000)
+    ens = simulation.cluster_sgs(df, pts, varios, seeds=[7, 8], backend="gpu", **kw)
+    for row, seed in zip(ens, (7, 8)):
+        ref = simulation.cluster_sgs(df, pts, varios, seed=seed, **kw)
+        np.testing.assert_allclose(row, ref, rtol=0, atol=1e-6)
+
+
+def test_cluster_labels_validated(clustered):
+    df, pts, varios = clustered
+    with pytest.raises(ValueError, match="cluster ids"):
+        simulation.cluster_sgs(df.assign(K=df.K + 1), pts, varios, num_points=24, radius=9000)
+    with pytest.raises(ValueError, match="missing the cluster column"):
+        simulation.cluster_sgs(df.drop(columns="K"), pts, varios, num_points=24, radius=9000)

@@ -52,14 +52,15 @@ extern "C" __global__ void sgs_kernel(
     double* out, int* flags,                         // (S, M) result; (S) error flags
     const int N, const int M, const int L,
     const double radius, const int oct_count, const int ordinary,
-    const int vtype, const double nug, const double sill,
-    const double R00, const double R01, const double R10, const double R11,
+    const double* vparams,                           // (C, 8) per variogram: vtype, nugget, sill, R00, R01, R10, R11, -
+    int* labels, const int cluster_mode,             // (S, L) cluster of each point (cluster_sgs); 0 = one variogram
     const double global_mean)
 {
     const int s = blockIdx.x, tid = threadIdx.x, bs = blockDim.x;
     const int lane = tid & 31, warp = tid >> 5, nwarps = (bs + 31) >> 5;
     X += (size_t)s * L; Y += (size_t)s * L; Z += (size_t)s * L;
     dist += (size_t)s * L; octv += (size_t)s * L; cand += (size_t)s * L;
+    labels += (size_t)s * L;
     node += (size_t)s * M; datum += (size_t)s * M; eps += (size_t)s * M; out += (size_t)s * M;
 
     __shared__ double last_d[8];
@@ -67,11 +68,12 @@ extern "C" __global__ void sgs_kernel(
     __shared__ double red_d[8][32];
     __shared__ int red_i[8][32];
     __shared__ int slot[MAXK], nb[MAXK];
-    __shared__ int m_sh, bad_sh, ncand_sh;
+    __shared__ int m_sh, bad_sh, ncand_sh, cl_sh;
+    __shared__ double first_d[8];
+    __shared__ int first_i[8];
     __shared__ double rx[MAXK], ry[MAXK], zz[MAXK], c0[MAXK], y0[MAXK], y1[MAXK];
     __shared__ double A[MAXK * (MAXK + 1) / 2];   // lower triangle, packed by rows
 
-    const double c_struct = sill - nug;
     const int K = 8 * oct_count;
 
     for (int i = 0; i < M; ++i) {
@@ -134,6 +136,7 @@ extern "C" __global__ void sgs_kernel(
                     }
                 slot[tid * oct_count + r] = best_d < INF ? best_i : -1;
                 last_d[tid] = best_d; last_i[tid] = best_i;
+                if (r == 0) { first_d[tid] = best_d; first_i[tid] = best_i; }
             }
             __syncthreads();
         }
@@ -144,10 +147,26 @@ extern "C" __global__ void sgs_kernel(
             for (int q = 0; q < K; ++q) if (slot[q] >= 0) nb[m++] = slot[q];
             m_sh = m; bad_sh = 0;
             if (m == 0) atomicOr(&flags[s], 1);
+            // cluster_sgs: the node takes the cluster of its nearest neighbor
+            // (nearest_neighbor_search_cluster), i.e. the best octant's first pick.
+            int cl = 0;
+            if (cluster_mode && m > 0) {
+                int k0 = 0;
+                for (int k = 1; k < 8; ++k)
+                    if (before(first_d[k], first_i[k], first_d[k0], first_i[k0])) k0 = k;
+                cl = labels[first_i[k0]];
+            }
+            cl_sh = cl;
         }
         __syncthreads();
         const int m = m_sh;
         if (m == 0) { if (tid == 0) out[z] = 0.0; __syncthreads(); continue; }
+
+        // Variogram for this node (the cluster's, or the only one)
+        const double* vp = vparams + 8 * cl_sh;
+        const int vtype = (int)vp[0];
+        const double nug = vp[1], sill = vp[2], c_struct = sill - nug;
+        const double R00 = vp[3], R01 = vp[4], R10 = vp[5], R11 = vp[6];
 
         // 4. Kriging system (Covariance.make_covariance_matrix / _array), rotated coordinates
         const double prx = px * R00 + py * R10, pry = px * R01 + py * R11;
@@ -240,7 +259,7 @@ extern "C" __global__ void sgs_kernel(
             }
             const double value = est + sqrt(fabs(var)) * eps[i];
             out[z] = value;
-            X[n] = px; Y[n] = py; Z[n] = value;
+            X[n] = px; Y[n] = py; Z[n] = value; labels[n] = cl_sh;
             if (bad_sh) atomicOr(&flags[s], 2);
         }
         __syncthreads();
@@ -270,20 +289,29 @@ def supports(vario, num_points) -> bool:
     return vario[5].lower() in _VTYPES and 8 <= 8 * (num_points // 8) <= MAX_NEIGHBORS
 
 
-def sgs_ensemble(points, X, Y, Z, vario, num_points, radius, ordinary, seeds, global_mean,
-                 threads=256):
-    """One realization per seed (NumPy arrays in, NumPy (len(seeds), M) out)."""
-    import cupy as cp
-
-    if not supports(vario, num_points):
+def _check(varios, num_points):
+    if not all(supports(v, num_points) for v in varios):
         raise NotImplementedError("CUDA SGS supports exponential/Gaussian/spherical variograms "
                                   f"and up to {MAX_NEIGHBORS} neighbors (num_points < {MAX_NEIGHBORS + 8})")
+
+
+def _params(vario):
+    """Kernel's per-variogram row: vtype, nugget, sill, rotation matrix."""
+    R = gs.make_rotation_matrix(vario[0], vario[2], vario[3])
+    return [_VTYPES[vario[5].lower()], float(vario[1]), float(vario[4]),
+            R[0, 0], R[0, 1], R[1, 0], R[1, 1], 0.0]
+
+
+def _run(points, X, Y, Z, labels, varios, num_points, radius, ordinary, seeds, global_mean,
+         copy_datum, cluster_mode, threads):
+    import cupy as cp
+
     S, M, N = len(seeds), len(points), len(X)
     oct_count = num_points // 8
 
     # Path, datum copies and random draws: identical to _sgs.sgs_ensemble.
     first_datum = {}
-    if float(vario[1]) == 0:
+    if copy_datum:
         for i, xy in enumerate(zip(X, Y)):
             first_datum.setdefault(xy, i)
     datum_of = np.array([first_datum.get((x, y), -1) for x, y in points])
@@ -303,10 +331,11 @@ def sgs_ensemble(points, X, Y, Z, vario, num_points, radius, ordinary, seeds, gl
     Xa = cp.full((S, L), cp.nan)
     Ya = cp.full((S, L), cp.nan)
     Za = cp.zeros((S, L))
+    La = cp.zeros((S, L), dtype=cp.int32)
     Xa[:, :N], Ya[:, :N], Za[:, :N] = cp.asarray(X), cp.asarray(Y), cp.asarray(Z)
+    La[:, :N] = cp.asarray(labels, dtype=cp.int32)
     out = cp.empty((S, M))
     flags = cp.zeros(S, dtype=cp.int32)
-    R = gs.make_rotation_matrix(vario[0], vario[2], vario[3])
 
     maxk = 32 * -(-8 * oct_count // 32)  # round up so few kernel variants get compiled
     _kernel(maxk)(
@@ -315,10 +344,8 @@ def sgs_ensemble(points, X, Y, Z, vario, num_points, radius, ordinary, seeds, gl
          cp.asarray(node), cp.asarray(datum), cp.asarray(eps),
          cp.empty((S, L)), cp.empty((S, L), dtype=cp.int32), cp.empty((S, L), dtype=cp.int32), out, flags,
          np.int32(N), np.int32(M), np.int32(L), np.float64(radius), np.int32(oct_count),
-         np.int32(bool(ordinary)), np.int32(_VTYPES[vario[5].lower()]),
-         np.float64(vario[1]), np.float64(vario[4]),
-         np.float64(R[0, 0]), np.float64(R[0, 1]), np.float64(R[1, 0]), np.float64(R[1, 1]),
-         np.float64(global_mean)),
+         np.int32(bool(ordinary)), cp.asarray([_params(v) for v in varios], dtype=cp.float64),
+         La, np.int32(bool(cluster_mode)), np.float64(global_mean)),
     )
     f = int(flags.max().get()) if S else 0
     if f & 1:
@@ -326,3 +353,21 @@ def sgs_ensemble(points, X, Y, Z, vario, num_points, radius, ordinary, seeds, gl
     if f & 2:
         raise FloatingPointError("Kriging matrix not positive definite (duplicate points with zero nugget?)")
     return out.get()
+
+
+def sgs_ensemble(points, X, Y, Z, vario, num_points, radius, ordinary, seeds, global_mean,
+                 threads=256):
+    """skrige_sgs / okrige_sgs: one realization per seed (NumPy (len(seeds), M) out)."""
+    _check([vario], num_points)
+    # GStatSim 1.2.0 copies a datum under a node only when the nugget is 0.
+    return _run(points, X, Y, Z, np.zeros(len(X)), [vario], num_points, radius, ordinary, seeds,
+                global_mean, copy_datum=float(vario[1]) == 0, cluster_mode=False, threads=threads)
+
+
+def cluster_sgs_ensemble(points, X, Y, Z, labels, varios, num_points, radius, seeds, global_mean,
+                         threads=256):
+    """cluster_sgs (simple kriging, a variogram per cluster): one realization per seed."""
+    _check(varios, num_points)
+    # cluster_sgs always copies a datum under a node, whatever the nugget.
+    return _run(points, X, Y, Z, labels, varios, num_points, radius, False, seeds, global_mean,
+                copy_datum=True, cluster_mode=True, threads=threads)
