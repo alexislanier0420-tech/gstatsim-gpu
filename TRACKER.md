@@ -34,6 +34,14 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 - [ ] Copy all cited results off HiPerGator (no backups; course accounts deleted at semester end)
 - [ ] Buffer Nov 21 – 30 for the class deadline
 
+## Upstream contributions
+| Date | Pull request | What | Status |
+|---|---|---|---|
+| 10-30 | [GStatSim#30](https://github.com/GatorGlaciology/GStatSim/pull/30) | SGS fails on NumPy ≥ 2.4 (`rng.normal(..., 1)`); 4 lines, bit-identical | open |
+| 10-30 | [gstatsimbook#7](https://github.com/GatorGlaciology/gstatsimbook/pull/7) | Chapters 3–9 missing variogram model type; 13 lines, all chapters run | open |
+
+When #30 is released: drop the `numpy<2.4` cap in pyproject.toml.
+
 ## Open questions
 | Question | For | Status |
 |---|---|---|

@@ -206,6 +206,13 @@ Exact versions are in [environment.yml](environment.yml).
 | `TRACKER.md` | Project plan, milestones, open questions, decisions and benchmark log |
 | `environment.yml`, `pyproject.toml` | Conda environment and package definition |
 
+## 🔧 Upstream contributions
+
+Bugs found while building this project, fixed in the original repositories:
+
+- [GatorGlaciology/GStatSim#30](https://github.com/GatorGlaciology/GStatSim/pull/30): GStatSim's four SGS functions fail on NumPy ≥ 2.4; 4-line fix, bit-identical results.
+- [GatorGlaciology/gstatsimbook#7](https://github.com/GatorGlaciology/gstatsimbook/pull/7): book chapters 3–9 fail on current GStatSim (missing variogram model type); all chapters tested.
+
 ## 🙏 Acknowledgements and data
 
 - **GStatSim:** MacKie, E. J., et al. (2023). GStatSim V1.0: a Python package for
