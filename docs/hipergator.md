@@ -19,27 +19,23 @@ semester.** Copy every benchmark record the report cites back to the laptop
 
 ## One-time setup
 
+The repo goes on blue, so code, data, logs and results sit together; the conda
+env stays in home (named envs live in `~/.conda`).
+
 ```bash
 ssh amcgill@hpg.rc.ufl.edu          # or ood.rc.ufl.edu > Clusters > Shell
-mkdir -p /blue/gly4930/$USER/gstatsim-gpu/data
-cd ~ && git clone <repo-url> gstatsim-gpu   # needs a remote (e.g. a private GitHub repo);
-                                           # otherwise push a git bundle: see below
+cd /blue/gly4930/$USER
+git clone https://github.com/alexislanier0420-tech/gstatsim-gpu.git
+#   while the repo is private, git asks for a username and a password:
+#   give a GitHub personal access token (read-only, this repo) as the password
 cd gstatsim-gpu
 module load conda
 conda env create -f environment.yml     # conda, not bare pip (pip --user installs collide)
+mkdir -p data logs
+wget -O data/greenland_test_data.csv https://raw.githubusercontent.com/GatorGlaciology/GStatSim/main/demos/data/greenland_test_data.csv
 ```
 
-Without a remote, bundle the repo on the laptop and clone the bundle (keeps LF
-line endings on the scripts, unlike copying the Windows working folder):
-
-```bash
-git bundle create gsgpu.bundle main          # on the laptop
-scp gsgpu.bundle amcgill@hpg.rc.ufl.edu:~
-git clone ~/gsgpu.bundle ~/gstatsim-gpu      # on HiPerGator
-```
-
-Copy the Tutorial 3 data to blue, not home:
-`scp data/greenland_test_data.csv amcgill@hpg.rc.ufl.edu:/blue/gly4930/amcgill/gstatsim-gpu/data/`
+The Rubble Glacier inputs (`figures/data/*.npz`) come with the clone.
 
 Login nodes have **no GPUs** and are for editing and job management only.
 Run tests that need a GPU in a job or an OnDemand session with the `gpu`
@@ -48,10 +44,19 @@ partition and `gpu:1`.
 ## Running
 
 ```bash
-mkdir -p logs
-sbatch scripts/hpg/env_report.sbatch    # after setting ACCOUNT/QOS
+cd /blue/gly4930/$USER/gstatsim-gpu
+git pull                                 # pick up laptop changes
+sbatch scripts/hpg/env_report.sbatch     # ~2 min
+sbatch scripts/hpg/benchmarks.sbatch     # poster speed numbers, ~30-60 min
 squeue --me
 jobnvtop <jobid>                         # watch GPU use live
 ```
 
 Handy: `slurmInfo` (group resources), `blue_quota`, `home_quota`.
+
+Results land in `results/hpg/` (`speed_hpg_l4.json` plus the environment
+report). Copy them back to the laptop the same day:
+
+```bash
+scp -r amcgill@hpg.rc.ufl.edu:/blue/gly4930/amcgill/gstatsim-gpu/results/hpg results/   # on the laptop
+```
