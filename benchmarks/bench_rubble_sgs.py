@@ -26,7 +26,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def prepare_rubble(res=1000):
-    """Same steps as the notebook: grid radar + rock, RBF trend, normal scores, variogram."""
+    """Same steps as the notebook: grid radar + rock, RBF trend, normal scores, variogram.
+    Returns (gridded data, simulation nodes, variogram)."""
+    w = rubble_workflow(res)
+    return w["df_grid"], w["pred_xy"][w["land"]], w["vario"]
+
+
+def rubble_workflow(res=1000):
+    """Everything sections 1-3 of the notebook produce, as a dict: gridded data,
+    prediction grid and its shape, trend, normal-score transform, land mask,
+    variogram, and the study-area arrays."""
     d = np.load(ROOT / "figures" / "data" / "study_area.npz")
     data = pd.concat([
         pd.DataFrame({"X": d["radar_x"], "Y": d["radar_y"], "Bed": d["radar_bed"]}),
@@ -51,7 +60,10 @@ def prepare_rubble(res=1000):
                       bin_func="even", n_lags=70, maxlag=50_000, normalize=False)
     V.model = "exponential"
     vrange, sill, nugget = (float(p) for p in V.parameters)
-    return df_grid, pred_xy[land], [0.0, nugget, vrange, vrange, sill, "Exponential"]
+    return {"df_grid": df_grid, "pred_xy": pred_xy, "rows": int(rows), "cols": int(cols),
+            "trend": trend, "nst": nst, "land": land, "node_ix": ix, "node_iy": iy,
+            "vario": [0.0, nugget, vrange, vrange, sill, "Exponential"], "variogram_model": V,
+            "study": d}
 
 
 def main(argv=None) -> int:

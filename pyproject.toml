@@ -56,3 +56,7 @@ extend-exclude = ["notebooks"]
 [tool.ruff.lint]
 # pycodestyle, pyflakes, import order, bugbear, modern-syntax upgrades
 select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+# figures/poster/common.py is imported as a local module by the poster scripts
+known-local-folder = ["common"]
