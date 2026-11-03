@@ -1,5 +1,5 @@
 #!/bin/bash
-# Poster speed benchmarks on a HiPerGator L4: GStatSim on the node's CPU vs the
+# Poster speed benchmarks on a HiPerGator L4: GStatSim and our NumPy version on the node's CPU vs the
 # GPU, same workloads as figures/poster/compute_speed.py on the laptop.
 # Course group gly4930 (account = QOS = course group).
 # Submit from the repo root (cloned on /blue, see docs/hipergator.md):  mkdir -p logs && sbatch scripts/hpg/benchmarks.sbatch
@@ -28,10 +28,13 @@ fi
 module purge
 module load conda
 conda activate gstatsim-gpu
+# NumPy/BLAS threads = the cores Slurm gave this job (the node has 96; more threads than cores skews timings)
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK} OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK}
 
 nvidia-smi
 lscpu | grep -E "Model name|^CPU\(s\)"
 echo "Slurm CPUs for this job: ${SLURM_CPUS_PER_TASK}"
 
 python scripts/env_report.py --out "$OUT" --label "hpg-l4"
-python figures/poster/compute_speed.py --out "$OUT/speed_hpg_l4.json"
+# Job ID in the name so a rerun never overwrites a record already cited (docs/hpg/speed_hpg_l4.json)
+python figures/poster/compute_speed.py --out "$OUT/speed_hpg_l4_${SLURM_JOB_ID}.json"

@@ -54,7 +54,7 @@ jobnvtop <jobid>                         # watch GPU use live
 
 Handy: `slurmInfo` (group resources), `blue_quota`, `home_quota`.
 
-Results land in `results/hpg/` (`speed_hpg_l4.json` plus the environment
+Results land in `results/hpg/` (`speed_hpg_l4_<jobid>.json` plus the environment
 report). Copy them back to the laptop the same day:
 
 ```bash

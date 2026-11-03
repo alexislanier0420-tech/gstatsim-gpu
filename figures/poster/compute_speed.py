@@ -2,6 +2,9 @@
 
 GStatSim (CPU) vs this project (GPU) on four workloads, plus how the time per
 SGS realization falls as more realizations run side by side on the GPU.
+Each workload is also timed with this project's NumPy version on the CPU (same
+algorithm as the GPU path, vectorized), so the GPU can be compared against a
+fast CPU implementation and not only against GStatSim's pandas loop.
 Writes results/poster/speed.json. Keep the computer awake while it runs
 (~20 min, mostly GStatSim).
 
@@ -19,13 +22,14 @@ from functools import partial
 from pathlib import Path
 
 import cupy as cp
+import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "benchmarks"))
 from bench_kriging import fit_variogram, prepare  # noqa: E402
 from bench_rubble_sgs import rubble_workflow  # noqa: E402
 
-from gstatsim_accel import envinfo, kriging, simulation  # noqa: E402
+from gstatsim_accel import _batched, _sgs, envinfo, kriging, simulation  # noqa: E402
 
 KW = dict(num_points=100, radius=50_000)
 
@@ -63,18 +67,24 @@ def main(argv=None) -> int:
 
     for label, kind, df, pts, vario, zz in cases:
         print(label, f"({len(pts):,} cells)", flush=True)
+        X, Y, Z = (df[c].to_numpy() for c in ("X", "Y", zz))
+        mean = float(df[zz].mean())
         if kind == "kriging":
             krige = partial(kriging.predict, df, pts, vario, zz=zz, **KW)
             cpu = timed(partial(krige, backend="cpu"), sync=False)
+            vec = timed(partial(_batched.krige, np, pts, X, Y, Z, vario, KW["num_points"],
+                                KW["radius"], False, mean), sync=False)
             gpu = min(timed(partial(krige, backend="gpu")) for _ in range(3))
-            row = {"label": label, "cells": len(pts), "gstatsim_s": cpu, "gpu_s": gpu}
+            row = {"label": label, "cells": len(pts), "gstatsim_s": cpu, "numpy_s": vec, "gpu_s": gpu}
         else:
             sgs = partial(simulation.sgs, df, pts, vario, seed=0, zz=zz, **KW)
             cpu = timed(partial(sgs, backend="cpu"), sync=False)
+            vec = timed(partial(_sgs.sgs, np, pts, X, Y, Z, vario, KW["num_points"], KW["radius"],
+                                False, 0, mean), sync=False)
             one = timed(partial(sgs, backend="gpu"))
             many = timed(partial(simulation.realizations, df, pts, vario, seeds=list(range(32)),
                                  backend="gpu", zz=zz, **KW)) / 32
-            row = {"label": label, "cells": len(pts), "gstatsim_s": cpu, "gpu_s": one,
+            row = {"label": label, "cells": len(pts), "gstatsim_s": cpu, "numpy_s": vec, "gpu_s": one,
                    "gpu_per_realization_32_s": many}
         out["workloads"].append(row)
         print("   ", {k: round(v, 3) if isinstance(v, float) else v for k, v in row.items()}, flush=True)
