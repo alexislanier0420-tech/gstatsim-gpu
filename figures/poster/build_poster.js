@@ -1,5 +1,6 @@
 // Builds the 36 x 24 in landscape poster (figures/poster/poster.pptx) from the
-// figure PNGs and results/poster/speed.json. Run from the repo root:
+// figure PNGs and the speed record (docs/hpg/speed_hpg_l4.json, the HiPerGator L4 run;
+// the laptop run is results/poster/speed.json). Run from the repo root:
 //   node figures/poster/build_poster.js
 // (needs pptxgenjs: npm install pptxgenjs, or NODE_PATH pointing at it)
 const fs = require("fs");
@@ -9,7 +10,7 @@ const pptxgen = require("pptxgenjs");
 const HERE = __dirname;
 const ROOT = path.resolve(HERE, "..", "..");
 const img = (name) => path.join(HERE, name);
-const speed = JSON.parse(fs.readFileSync(path.join(ROOT, "results", "poster", "speed.json"), "utf8"));
+const speed = JSON.parse(fs.readFileSync(path.join(ROOT, "docs", "hpg", "speed_hpg_l4.json"), "utf8"));
 const W = Object.fromEntries(speed.workloads.map((w) => [w.label.split(" ")[0] + "_" + w.label.split("· ")[1], w]));
 const krig = W["Kriging_Tutorial 3"];
 const sgsR = W["SGS_Rubble Glacier"];
@@ -124,7 +125,7 @@ text([
   { text: "References  ", options: { bold: true, color: INK } },
   { text: "MacKie et al. (2023) GStatSim V1.0, Geosci. Model Dev. 16, 3765–3783 · Morlighem (2022) BedMachine Antarctica v3, NSIDC · Pritchard et al. (2025) Bedmap3, Sci. Data 12, 414 · Okuta et al. (2017) CuPy, LearningSys/NeurIPS.", options: { color: INK2, breakLine: true } },
   { text: "Upstream fixes  ", options: { bold: true, color: INK } },
-  { text: "GatorGlaciology/GStatSim#30 (SGS on NumPy ≥ 2.4) · gstatsimbook#7 (chapters 3–9). Computing: laptop RTX 5060; UFIT Research Computing, HiPerGator.", options: { color: INK2 } },
+  { text: "GatorGlaciology/GStatSim#30 (SGS on NumPy ≥ 2.4) · gstatsimbook#7 (chapters 3–9). Computing: UFIT Research Computing, HiPerGator (NVIDIA L4); development on a laptop RTX 5060.", options: { color: INK2 } },
 ], { x: 19.4, y: FY, w: 12.6, h: 1.9, fontSize: 14, valign: "top", paraSpaceAfter: 6 });
 s.addImage({ path: img("qr_repo.png"), x: 32.95, y: FY - 0.05, w: 1.6, h: 1.6, altText: "QR code linking to the GitHub repository" });
 text("Code & notebooks", { x: 32.4, y: FY + 1.58, w: 2.7, h: 0.4, fontSize: 13, color: INK2, align: "center" });

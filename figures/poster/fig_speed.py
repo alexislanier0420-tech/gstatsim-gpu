@@ -1,4 +1,4 @@
-"""Poster column 4: how much faster, measured on one laptop in one run."""
+"""Poster column 4: how much faster, measured on one HiPerGator L4 node in one run."""
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 
-from common import COL_W, CPU, GPU, INK, INK2, MUTED, RESULTS, save, style
+from common import COL_W, CPU, GPU, INK, INK2, MUTED, SPEED, save, style
 
 style()
-sp = json.loads((RESULTS / "speed.json").read_text())
+sp = json.loads(SPEED.read_text(encoding="utf-8"))
 rows = sp["workloads"][::-1]   # first workload on top
 
 fig, (a, b) = plt.subplots(2, 1, figsize=(COL_W, COL_W * 1.02),
@@ -68,12 +68,13 @@ b.set_xscale("log", base=2)
 b.set_yscale("log")
 b.set_xticks(S, [str(s) for s in S])
 b.set_yticks([1, 10, 100], ["1 s", "10 s", "100 s"])
-b.set_ylim(0.45, gst * 1.6)
+b.set_ylim(min(0.45, t.min() / 1.6), gst * 1.6)
 b.set_xlim(S[0] / 1.3, S[-1] * 4.5)
 b.grid(True, axis="y", which="major")
 b.set_xlabel("Realizations simulated side by side")
 b.set_ylabel("Seconds per\nrealization")
 b.set_title("Rubble Glacier SGS: more realizations, less time each", fontsize=18, color=INK, loc="left")
-fig.text(0.0, -0.035, "All times on one laptop (Intel CPU, NVIDIA RTX 5060 8 GB). GPU times exclude "
-         "one-time start-up (~3 s).", fontsize=12, color=MUTED)
+fig.text(0.0, -0.035, "All times on one HiPerGator node: GStatSim on 4 cores of an AMD EPYC 9655P,\n"
+         "GPU on an NVIDIA L4 (24 GB). GPU times exclude one-time start-up.", fontsize=12, color=MUTED,
+         va="top")
 save(fig, "speed")

@@ -16,6 +16,9 @@ from matplotlib.colors import LinearSegmentedColormap, Normalize
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "figures" / "poster"
 RESULTS = ROOT / "results" / "poster"
+# Speed numbers on the poster: the HiPerGator L4 run (GStatSim on the same node's CPU).
+# The laptop run is results/poster/speed.json.
+SPEED = ROOT / "docs" / "hpg" / "speed_hpg_l4.json"
 
 # Poster grid: 4 columns between 0.75 in margins and 0.5 in gutters
 COL_W = 8.25          # in
