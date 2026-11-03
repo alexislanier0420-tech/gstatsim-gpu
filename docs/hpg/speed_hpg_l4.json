@@ -1,0 +1,81 @@
+{
+  "environment": {
+    "os": "Linux-5.14.0-687.39.1.el9_8.x86_64-x86_64-with-glibc2.34",
+    "python": "3.12.16",
+    "cpu_model": "AMD EPYC 9655P 96-Core Processor",
+    "cpu_count_logical": 96,
+    "ram_bytes": 810704248832,
+    "nvidia_smi": [
+      {
+        "name": "NVIDIA L4",
+        "memory_mib": 23034,
+        "driver": "580.178.04",
+        "compute_capability": "8.9"
+      }
+    ],
+    "cupy_gpu": {
+      "available": true,
+      "reason": "ok",
+      "device_name": "NVIDIA L4",
+      "compute_capability": "8.9",
+      "total_memory_bytes": 23659151360,
+      "cuda_runtime_version": 12090,
+      "cupy_version": "14.2.0"
+    },
+    "packages": {
+      "gstatsim": "1.2.0",
+      "gstatsim-accel": "0.1.0",
+      "numpy": "2.2.6",
+      "scipy": "1.15.2",
+      "pandas": "2.2.3",
+      "scikit-learn": "1.6.1",
+      "cupy-cuda12x": "14.2.0",
+      "psutil": "7.2.2"
+    },
+    "slurm": {
+      "SLURM_JOB_ID": "49356367",
+      "SLURM_JOB_PARTITION": "hpg-turin",
+      "SLURM_CPUS_PER_TASK": "4",
+      "SLURM_GPUS": "l4:1",
+      "SLURM_JOB_GPUS": "2",
+      "SLURM_MEM_PER_NODE": "32768"
+    }
+  },
+  "workloads": [
+    {
+      "label": "Kriging \u00b7 Tutorial 3",
+      "cells": 22500,
+      "gstatsim_s": 65.97447993420064,
+      "gpu_s": 0.6820732858031988
+    },
+    {
+      "label": "SGS \u00b7 Tutorial 3",
+      "cells": 22500,
+      "gstatsim_s": 76.96230098046362,
+      "gpu_s": 17.36706026084721,
+      "gpu_per_realization_32_s": 0.5521718891977798
+    },
+    {
+      "label": "Kriging \u00b7 Rubble Glacier",
+      "cells": 40000,
+      "gstatsim_s": 107.69549477379769,
+      "gpu_s": 1.7452785335481167
+    },
+    {
+      "label": "SGS \u00b7 Rubble Glacier",
+      "cells": 30750,
+      "gstatsim_s": 84.83987331297249,
+      "gpu_s": 20.69479096122086,
+      "gpu_per_realization_32_s": 0.6487898500054143
+    }
+  ],
+  "scaling": {
+    "1": 20.689619253389537,
+    "2": 10.347560860682279,
+    "4": 5.184250268153846,
+    "8": 2.592208068119362,
+    "16": 1.2965551025699824,
+    "32": 0.6490496097831056,
+    "64": 0.560984257623204
+  }
+}

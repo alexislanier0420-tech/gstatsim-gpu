@@ -13,7 +13,7 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 - [x] Prior work reviewed: [docs/existing_port_review.md](docs/existing_port_review.md)
 - [ ] Confirm deliverable expectations with instructor (see open questions)
 - [x] HiPerGator account/QOS set to `gly4930` in `scripts/hpg/env_report.sbatch`
-- [ ] HiPerGator: confirm L4 partition, copy repo, build env, run report on an L4 ([docs/hipergator.md](docs/hipergator.md))
+- [x] HiPerGator: confirm L4 partition, copy repo, build env, run report on an L4 ([docs/hipergator.md](docs/hipergator.md)) — 11-03, job 49356366, `results/hpg/`
 - [ ] Pick a small, repeatable Tutorial 4 (SGS) case
 
 ### Phase 1: CPU baseline (Nov 2 – 8) · Gate 2 Nov 8
@@ -26,12 +26,12 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 ### Phase 2: GPU prototype (Nov 9 – 15) · Gate 3 Nov 15
 - [ ] Batched GPU kriging with GStatSim octant search, returning estimate + variance
 - [ ] CPU-vs-GPU tests on fixtures incl. spherical model, nugget > 0, points on data
-- [ ] Runs on laptop GPU (RTX 5060) and a HiPerGator L4
+- [x] Runs on laptop GPU (RTX 5060) and a HiPerGator L4 (11-03, job 49356367)
 
 ### Phase 3: Validate & deliver (Nov 16 – 20)
 - [ ] Benchmarks across sizes, incl. cases where GPU is slower; memory + transfer costs
 - [ ] Report, setup guide, demo notebook, expansion roadmap
-- [ ] Copy all cited results off HiPerGator (no backups; course accounts deleted at semester end)
+- [ ] Copy all cited results off HiPerGator (no backups; course accounts deleted at semester end) — 11-03 L4 benchmark copied to `results/hpg/`
 - [ ] Buffer Nov 21 – 30 for the class deadline
 
 ## Upstream contributions
@@ -132,6 +132,14 @@ When #30 is released: drop the `numpy<2.4` cap in pyproject.toml.
 | 10-30 | Laptop RTX 5060 | GPU book notebooks ch. 3/4/5/8 (slow steps) | gpu | — | 4.3 / 19 / 34 / 22 s | — | — | book CPU: 4:11 / 7:58 / 10:25 / 5:23 |
 | 10-30 | Laptop RTX 5060 | GPU book notebooks ch. 3–8, rerun after cluster kernel | gpu | — | 3.9 / 20 / 35 / 29 / 29 / 21 s | — | cluster_sgs matches GStatSim ~1e-11 | book CPU: 4:11 / 7:58 / 10:25 / 6:00 / 6:19 / 5:23 |
 | 10-30 | Laptop RTX 5060 | GPU book notebook ch. 9 (cokriging + cosimulation) | gpu | — | 5.3 s + 15.6 s | — | cokrige/cosim_mm1 match GStatSim ~1e-13 | book CPU: 3:01 + 3:40 |
+| 11-03 | HPG L4 (CPU: EPYC 9655P, 4 cores) | Tut3 kriging, full grid | GStatSim 1.2.0 | 22,500 | 66.0 s | 2.9 ms | reference | `docs/hpg/speed_hpg_l4.json`, job 49356367 |
+| 11-03 | HPG L4 | Tut3 kriging, full grid | gpu | 22,500 | **0.68 s (97×)** | 0.030 ms | — | same record |
+| 11-03 | HPG L4 | Tut3 SGS | GStatSim 1.2.0 | 22,500 | 77.0 s / realization | 3.4 ms | reference | same record |
+| 11-03 | HPG L4 | Tut3 SGS | gpu, 1 alone / 32 together | 22,500 | 17.4 s / **0.55 s per realization (139×)** | — | — | same record |
+| 11-03 | HPG L4 | Rubble kriging, 1 km | GStatSim 1.2.0 | 40,000 | 107.7 s | 2.7 ms | reference | same record |
+| 11-03 | HPG L4 | Rubble kriging, 1 km | gpu | 40,000 | **1.75 s (62×)** | 0.044 ms | — | same record |
+| 11-03 | HPG L4 | Rubble SGS | GStatSim 1.2.0 | 30,750 | 84.8 s / realization | 2.8 ms | reference | same record |
+| 11-03 | HPG L4 | Rubble SGS | gpu, 1 alone / 32 together | 30,750 | 20.7 s / **0.65 s per realization (131×)** | — | — | batch scaling 1→64: 20.7, 10.3, 5.2, 2.6, 1.30, 0.65, 0.56 s; L4 saturates at ~32–64 |
 
 ## Risks to watch
 - Data: `glacier_lab1.nc` may still hold the Marie Byrd Land crop; check extent before using lab outputs.
