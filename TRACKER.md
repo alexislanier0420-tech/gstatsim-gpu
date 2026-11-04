@@ -46,11 +46,12 @@ When #30 is released: drop the `numpy<2.4` cap in pyproject.toml.
 | Question | For | Status |
 |---|---|---|
 | Is the deliverable a report + code, or must it be a PR to GStatSim? | Instructor | open |
-| Does the project have to use custom CUDA, or is CuPy acceptable? | Instructor | open |
+| Does the project have to use custom CUDA, or is CuPy acceptable? | Instructor | Dropped 11-03: user says instructor doesn't mind; both are used |
 | Which HiPerGator account/QOS and GPU partition can the class use? | RC orientation | Resolved: `gly4930`, L4s on `hpg-turin`, course cap 2 GPUs |
 | May we reuse code from badger-lord/gstatsim_gpu (no license)? Contact author or reimplement | Author | open; plan to reimplement |
-| Should the Rubble Glacier data also be benchmarked, or only the tutorial data? | Instructor | open |
-| Is SGS in scope, or only a feasibility discussion? | Instructor | open |
+| Should the Rubble Glacier data also be benchmarked, or only the tutorial data? | Instructor | open (both benchmarked; asked 11-03) |
+| Transfer the repo to GatorGlaciology or make it public, for future students? | Instructor | open (asked 11-03) |
+| Is SGS in scope, or only a feasibility discussion? | Instructor | Dropped 11-03: user says instructor doesn't mind; SGS is done |
 
 ## Decisions
 | Date | Decision | Why |
