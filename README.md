@@ -138,8 +138,10 @@ pytest                                   # 37 tests, about 15 s
 python scripts/env_report.py --label mymachine   # checks the GPU works
 ```
 
-No NVIDIA GPU? Delete the `cupy-cuda12x[ctk]` line from `environment.yml` first;
-the CPU backend works without it.
+No NVIDIA GPU? Try it in Google Colab with a free GPU, nothing to install:
+[`notebooks/colab_quickstart.ipynb`](notebooks/colab_quickstart.ipynb) (kriging and SGS
+of the book's Greenland data; *Runtime → Change runtime type → T4 GPU*). Or delete the
+`cupy-cuda12x[ctk]` line from `environment.yml`; the CPU backend works without it.
 
 **Run the notebook:** register the env as a Jupyter kernel once, then open
 `notebooks/rubble_glacier_workflow.ipynb` and pick **Python (gstatsim-gpu)**:
@@ -169,7 +171,7 @@ Every push runs the linter and the tests on Python 3.10–3.12 (GitHub Actions).
 
 ### Dependencies
 
-Python 3.12 · GStatSim 1.1.5 · NumPy 2.2 · pandas 2.2 · SciPy 1.15 · scikit-learn 1.6 ·
+Python 3.12 · GStatSim 1.2.0 · NumPy 2.2 · pandas 2.2 · SciPy 1.15 · scikit-learn 1.6 ·
 scikit-gstat · matplotlib · Jupyter (ipykernel, nbconvert) · tqdm · psutil · pytest · CuPy 14 (`cupy-cuda12x[ctk]`, GPU only).
 Exact versions are in [environment.yml](environment.yml).
 

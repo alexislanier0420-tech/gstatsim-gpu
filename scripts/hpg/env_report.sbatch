@@ -4,6 +4,7 @@
 # Submit from the repo root:  mkdir -p logs && sbatch scripts/hpg/env_report.sbatch
 # (SLURM won't create logs/ itself; without it the job's output is lost.)
 #SBATCH --job-name=gsgpu_env
+# Another course? Change gly4930 to your course group (id -gn) on these two lines.
 #SBATCH --account=gly4930
 #SBATCH --qos=gly4930
 # Courses may use ONLY L4 GPUs. The burst QOS (gly4930-b) cannot request GPUs.

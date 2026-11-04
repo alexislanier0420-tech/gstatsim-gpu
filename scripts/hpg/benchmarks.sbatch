@@ -4,6 +4,7 @@
 # Course group gly4930 (account = QOS = course group).
 # Submit from the repo root (cloned on /blue, see docs/hipergator.md):  mkdir -p logs && sbatch scripts/hpg/benchmarks.sbatch
 #SBATCH --job-name=gsgpu_bench
+# Another course? Change gly4930 to your course group (id -gn) on these two lines.
 #SBATCH --account=gly4930
 #SBATCH --qos=gly4930
 # Courses may use ONLY L4 GPUs; hpg-turin is the L4 partition.

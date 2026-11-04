@@ -1,5 +1,11 @@
 # Running on HiPerGator (course allocation)
 
+> **Using this in a different course or semester?** This guide was written for
+> GLY4930 (Fall 2026). Replace `gly4930` with your course's group (run `id -gn` on
+> HiPerGator, or ask your TA) here and in the `#SBATCH --account`/`--qos` lines of
+> `scripts/hpg/*.sbatch`, and `<username>` with your HiPerGator (GatorLink) username.
+> Check the GPU type and partition with `slurmInfo`; the limits below may differ.
+
 Based on the UFIT-RC course orientation. Support questions go to the **course TA**
 first, not to RC directly.
 
@@ -9,8 +15,8 @@ first, not to RC directly.
 |---|---|---|
 | CPU | 32 cores, 250 GB RAM (whole course), 744 h job time limit | CPU baselines: request ≤ 8 cores so classmates can run too |
 | GPU | **2 L4s for the whole course** (23 GB each), partition `hpg-turin` | All GPU results are on L4s. Develop on the laptop GPU; use HPG for final runs, and expect queueing near deadlines |
-| Blue storage | 2 TB per course at `/blue/gly4930/amcgill` | Data, results, logs |
-| Home | 40 GB at `/home/amcgill` | Code and conda envs only, not job input/output |
+| Blue storage | 2 TB per course at `/blue/gly4930/<username>` | Data, results, logs |
+| Home | 40 GB at `/home/<username>` | Code and conda envs only, not job input/output |
 | QOS | `gly4930` (investment) or `gly4930-b` (burst) | Burst can't request GPUs; use it only for CPU runs |
 
 **Nothing is backed up, and course accounts are deleted at the end of the
@@ -23,7 +29,7 @@ The repo goes on blue, so code, data, logs and results sit together; the conda
 env stays in home (named envs live in `~/.conda`).
 
 ```bash
-ssh amcgill@hpg.rc.ufl.edu          # or ood.rc.ufl.edu > Clusters > Shell
+ssh <username>@hpg.rc.ufl.edu          # or ood.rc.ufl.edu > Clusters > Shell
 cd /blue/gly4930/$USER
 git clone https://github.com/alexislanier0420-tech/gstatsim-gpu.git
 #   while the repo is private, git asks for a username and a password:
@@ -58,5 +64,5 @@ Results land in `results/hpg/` (`speed_hpg_l4_<jobid>.json` plus the environment
 report). Copy them back to the laptop the same day:
 
 ```bash
-scp -r amcgill@hpg.rc.ufl.edu:/blue/gly4930/amcgill/gstatsim-gpu/results/hpg results/   # on the laptop
+scp -r <username>@hpg.rc.ufl.edu:/blue/gly4930/<username>/gstatsim-gpu/results/hpg results/   # on the laptop
 ```
