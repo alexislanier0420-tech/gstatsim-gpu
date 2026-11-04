@@ -21,7 +21,7 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 - [ ] Profile by component (early result: neighbor search ~79%; see review doc)
 - [ ] Tutorial 4 SGS baseline at a manageable size
 - [x] **Write tolerances before Phase 2** (see Acceptance criteria)
-- [ ] Decide whether to also benchmark an optimized CPU path (KD-tree)
+- [x] Decide whether to also benchmark an optimized CPU path (KD-tree) — benchmarked our NumPy version instead (11-03, HPG)
 
 ### Phase 2: GPU prototype (Nov 9 – 15) · Gate 3 Nov 15
 - [ ] Batched GPU kriging with GStatSim octant search, returning estimate + variance
@@ -37,7 +37,7 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 ## Upstream contributions
 | Date | Pull request | What | Status |
 |---|---|---|---|
-| 10-30 | [GStatSim#30](https://github.com/GatorGlaciology/GStatSim/pull/30) | SGS fails on NumPy ≥ 2.4 (`rng.normal(..., 1)`); 4 lines, bit-identical | open |
+| 10-30 | [GStatSim#30](https://github.com/GatorGlaciology/GStatSim/pull/30) | SGS fails on NumPy ≥ 2.4 (`rng.normal(..., 1)`); 4 lines, bit-identical | merged 10-30, not yet released (PyPI 1.2.0 on 11-03) |
 | 10-30 | [gstatsimbook#7](https://github.com/GatorGlaciology/gstatsimbook/pull/7) | Chapters 3–9 missing variogram model type; 13 lines, all chapters run | open |
 
 When #30 is released: drop the `numpy<2.4` cap in pyproject.toml.
@@ -140,6 +140,10 @@ When #30 is released: drop the `numpy<2.4` cap in pyproject.toml.
 | 11-03 | HPG L4 | Rubble kriging, 1 km | gpu | 40,000 | **1.75 s (62×)** | 0.044 ms | — | same record |
 | 11-03 | HPG L4 | Rubble SGS | GStatSim 1.2.0 | 30,750 | 84.8 s / realization | 2.8 ms | reference | same record |
 | 11-03 | HPG L4 | Rubble SGS | gpu, 1 alone / 32 together | 30,750 | 20.7 s / **0.65 s per realization (131×)** | — | — | batch scaling 1→64: 20.7, 10.3, 5.2, 2.6, 1.30, 0.65, 0.56 s; L4 saturates at ~32–64 |
+| 11-03 | HPG L4 (CPU: EPYC 9655P, 4 cores) | Tut3 kriging, full grid | NumPy (ours, 4 BLAS threads) | 22,500 | 5.38 s | 0.24 ms | = GPU to ~1e-14 | `docs/hpg/speed_hpg_l4_49371294.json`, job 49371294; GStatSim 64.6 s, GPU 0.68 s → **GPU 7.9× vs NumPy** |
+| 11-03 | HPG L4 | Rubble kriging, 1 km | NumPy (ours) | 40,000 | 13.8 s | 0.35 ms | = GPU | same record; GStatSim 100.3 s, GPU 1.74 s → **GPU 7.9× vs NumPy** |
+| 11-03 | HPG L4 | Tut3 SGS | NumPy (ours), 1 realization | 22,500 | 27.0 s | 1.2 ms | = GPU | same record; GPU 17.4 s alone (1.6×), 0.55 s each with 32 (**50×**) |
+| 11-03 | HPG L4 | Rubble SGS | NumPy (ours), 1 realization | 30,750 | 52.5 s | 1.7 ms | = GPU | same record; GPU 20.7 s alone (2.5×), 0.65 s each with 32 (**81×**; ~20× if NumPy ran 4 realizations on the 4 cores) |
 
 ## Risks to watch
 - Data: `glacier_lab1.nc` may still hold the Marie Byrd Land crop; check extent before using lab outputs.
@@ -150,3 +154,6 @@ When #30 is released: drop the `numpy<2.4` cap in pyproject.toml.
 - The laptop sleeps during long unattended runs (3 invalid timings so far). Final
   benchmarks should run on HiPerGator, or on the laptop with sleep disabled.
 - A GPU speedup over pandas-bound GStatSim may mostly measure Python overhead; report against an optimized CPU path too.
+  **Measured 11-03 (HPG L4):** kriging is 7.9× faster on the GPU than our NumPy version, which is itself
+  7–12× faster than GStatSim. SGS: 1.6–2.5× for one realization, 50–81× with 32 at once (NumPy ran one
+  realization on one core; ~4× less if it used all 4). Report these alongside the GStatSim speedups.

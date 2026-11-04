@@ -1,0 +1,66 @@
+Tue Nov  3 16:45:45 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.178.04             Driver Version: 580.178.04     CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA L4                      On  |   00000000:C1:00.0 Off |                    0 |
+| N/A   32C    P8             16W /   70W |       0MiB /  23034MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+CPU(s):                                  96
+Model name:                              AMD EPYC 9655P 96-Core Processor
+Slurm CPUs for this job: 4
+# Environment report (2026-11-03T21:45:47+00:00)
+
+| Item | Value |
+|---|---|
+| OS | Linux-5.14.0-687.39.1.el9_8.x86_64-x86_64-with-glibc2.34 |
+| Python | 3.12.16 |
+| CPU | AMD EPYC 9655P 96-Core Processor (96 logical) |
+| RAM | 755.0 GiB |
+| GPU 0 (nvidia-smi) | NVIDIA L4, 23034 MiB, driver 580.178.04, CC 8.9 |
+| CuPy device | NVIDIA L4, CC 8.9, 22.0 GiB, CUDA runtime 12.9 |
+| GPU smoke test | passed 5.551115123125783e-17 |
+| gstatsim | 1.2.0 |
+| gstatsim-accel | 0.1.0 |
+| numpy | 2.2.6 |
+| scipy | 1.15.2 |
+| pandas | 2.2.3 |
+| scikit-learn | 1.6.1 |
+| cupy-cuda12x | 14.2.0 |
+| psutil | 7.2.2 |
+| SLURM_JOB_ID | 49371294 |
+| SLURM_JOB_PARTITION | hpg-turin |
+| SLURM_CPUS_PER_TASK | 4 |
+| SLURM_GPUS | l4:1 |
+| SLURM_JOB_GPUS | 2 |
+| SLURM_MEM_PER_NODE | 32768 |
+
+Saved /blue/gly4930/amcgill/gstatsim-gpu/results/hpg/20261103T214547Z_hpg-l4.json and .md
+Kriging · Tutorial 3 (22,500 cells)
+    {'label': 'Kriging · Tutorial 3', 'cells': 22500, 'gstatsim_s': 64.593, 'numpy_s': 5.376, 'gpu_s': 0.684}
+SGS · Tutorial 3 (22,500 cells)
+    {'label': 'SGS · Tutorial 3', 'cells': 22500, 'gstatsim_s': 74.58, 'numpy_s': 27.034, 'gpu_s': 17.368, 'gpu_per_realization_32_s': 0.546}
+Kriging · Rubble Glacier (40,000 cells)
+    {'label': 'Kriging · Rubble Glacier', 'cells': 40000, 'gstatsim_s': 100.294, 'numpy_s': 13.846, 'gpu_s': 1.743}
+SGS · Rubble Glacier (30,750 cells)
+    {'label': 'SGS · Rubble Glacier', 'cells': 30750, 'gstatsim_s': 81.852, 'numpy_s': 52.48, 'gpu_s': 20.693, 'gpu_per_realization_32_s': 0.649}
+      1 side by side: 20.70 s per realization
+      2 side by side: 10.35 s per realization
+      4 side by side: 5.18 s per realization
+      8 side by side: 2.60 s per realization
+     16 side by side: 1.30 s per realization
+     32 side by side: 0.65 s per realization
+     64 side by side: 0.56 s per realization
+wrote /blue/gly4930/amcgill/gstatsim-gpu/results/hpg/speed_hpg_l4_49371294.json

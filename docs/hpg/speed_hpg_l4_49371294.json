@@ -1,0 +1,85 @@
+{
+  "environment": {
+    "os": "Linux-5.14.0-687.39.1.el9_8.x86_64-x86_64-with-glibc2.34",
+    "python": "3.12.16",
+    "cpu_model": "AMD EPYC 9655P 96-Core Processor",
+    "cpu_count_logical": 96,
+    "ram_bytes": 810704015360,
+    "nvidia_smi": [
+      {
+        "name": "NVIDIA L4",
+        "memory_mib": 23034,
+        "driver": "580.178.04",
+        "compute_capability": "8.9"
+      }
+    ],
+    "cupy_gpu": {
+      "available": true,
+      "reason": "ok",
+      "device_name": "NVIDIA L4",
+      "compute_capability": "8.9",
+      "total_memory_bytes": 23659151360,
+      "cuda_runtime_version": 12090,
+      "cupy_version": "14.2.0"
+    },
+    "packages": {
+      "gstatsim": "1.2.0",
+      "gstatsim-accel": "0.1.0",
+      "numpy": "2.2.6",
+      "scipy": "1.15.2",
+      "pandas": "2.2.3",
+      "scikit-learn": "1.6.1",
+      "cupy-cuda12x": "14.2.0",
+      "psutil": "7.2.2"
+    },
+    "slurm": {
+      "SLURM_JOB_ID": "49371294",
+      "SLURM_JOB_PARTITION": "hpg-turin",
+      "SLURM_CPUS_PER_TASK": "4",
+      "SLURM_GPUS": "l4:1",
+      "SLURM_JOB_GPUS": "2",
+      "SLURM_MEM_PER_NODE": "32768"
+    }
+  },
+  "workloads": [
+    {
+      "label": "Kriging \u00b7 Tutorial 3",
+      "cells": 22500,
+      "gstatsim_s": 64.59323399420828,
+      "numpy_s": 5.376348058693111,
+      "gpu_s": 0.6843671882525086
+    },
+    {
+      "label": "SGS \u00b7 Tutorial 3",
+      "cells": 22500,
+      "gstatsim_s": 74.57979074213654,
+      "numpy_s": 27.033661633729935,
+      "gpu_s": 17.36760752554983,
+      "gpu_per_realization_32_s": 0.545852826006012
+    },
+    {
+      "label": "Kriging \u00b7 Rubble Glacier",
+      "cells": 40000,
+      "gstatsim_s": 100.29393301904202,
+      "numpy_s": 13.846106114797294,
+      "gpu_s": 1.7425733022391796
+    },
+    {
+      "label": "SGS \u00b7 Rubble Glacier",
+      "cells": 30750,
+      "gstatsim_s": 81.85224853083491,
+      "numpy_s": 52.479574860073626,
+      "gpu_s": 20.69296274986118,
+      "gpu_per_realization_32_s": 0.6489662932581268
+    }
+  ],
+  "scaling": {
+    "1": 20.701188815757632,
+    "2": 10.347273172810674,
+    "4": 5.183691190555692,
+    "8": 2.5996401295997202,
+    "16": 1.301936534116976,
+    "32": 0.6489169338601641,
+    "64": 0.5606072676746408
+  }
+}
