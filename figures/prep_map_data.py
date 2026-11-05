@@ -1,11 +1,13 @@
 """Extract the small arrays the figure's map panels need from the course data.
 
 Run once in the geostats2026 conda env (needs xarray + netCDF4):
-    python prep_map_data.py <path to GEO/data>
-Writes data/antarctica_mask_5km.npz and data/study_area.npz next to this script.
+    python prep_map_data.py <path to GEO/data>            # Rubble Glacier
+    python prep_map_data.py <path to GEO/data> ase        # Amundsen Sea Embayment
+Writes data/antarctica_mask_5km.npz and data/study_area.npz (Rubble) or
+data/study_area_<region>.npz next to this script.
 
-The study area is cropped exactly as in Lab 1 (Rubble Glacier box), straight
-from BedMachine and the Bedmap3 thickness compilation.
+The study area is cropped exactly as in Lab 1 (Rubble Glacier box by default),
+straight from BedMachine and the Bedmap3 thickness compilation.
 """
 import sys
 from pathlib import Path
@@ -13,12 +15,18 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-# Lab 1 box, polar stereographic (EPSG:3031) metres
-XMIN, XMAX = -2_000_250, -1_800_250
-YMIN, YMAX = 650_250, 850_250
+# Boxes in polar stereographic (EPSG:3031) metres, on Bedmap3's 500 m cell centres (...250/...750)
+REGIONS = {
+    # Lab 1 box
+    "rubble": (-2_000_250, -1_800_250, 650_250, 850_250),
+    # Amundsen Sea Embayment: Thwaites + Pine Island glaciers, 650 x 700 km
+    "ase": (-1_900_250, -1_250_250, -750_250, -50_250),
+}
 RES = 500
 
 src = Path(sys.argv[1])
+region = sys.argv[2] if len(sys.argv) > 2 else "rubble"
+XMIN, XMAX, YMIN, YMAX = REGIONS[region]
 out = Path(__file__).with_name("data")
 out.mkdir(exist_ok=True)
 
@@ -47,7 +55,7 @@ radar = np.isfinite(radar_bed) & (mask == 2)
 # On ice-free rock (mask 1) the bed is the surface: exact conditioning data.
 rock = mask == 1
 xx, yy = np.meshgrid(glacier.x.values, glacier.y.values)
-np.savez_compressed(out / "study_area.npz",
+np.savez_compressed(out / ("study_area.npz" if region == "rubble" else f"study_area_{region}.npz"),
                     x=glacier.x.values, y=glacier.y.values, mask=mask,
                     radar_x=xx[radar], radar_y=yy[radar],
                     radar_bed=radar_bed[radar].astype("float32"),
