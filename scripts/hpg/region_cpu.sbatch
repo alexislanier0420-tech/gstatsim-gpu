@@ -25,6 +25,8 @@ module purge
 module load conda
 conda activate gstatsim-gpu
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK} OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+# GStatSim's progress bar: one log line a minute instead of several a second
+export TQDM_MININTERVAL=60
 
 lscpu | grep -E "Model name|^CPU\(s\)"
 python benchmarks/bench_region.py --part cpu --res "$RES" \

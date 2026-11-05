@@ -58,6 +58,17 @@ squeue --me
 jobnvtop <jobid>                         # watch GPU use live
 ```
 
+**Large region** (Amundsen Sea Embayment, `benchmarks/bench_region.py`): a GPU job
+on an L4 and a CPU-only job (burst QOS, no GPU) for our NumPy version and GStatSim,
+each given the resolution in metres:
+
+```bash
+sbatch scripts/hpg/region_gpu.sbatch 1000                     # ~40 min
+sbatch scripts/hpg/region_cpu.sbatch 1000                     # several hours
+sbatch --time=04:00:00 scripts/hpg/region_gpu.sbatch 500      # 1.16 M cells
+sbatch --time=4-00:00:00 scripts/hpg/region_cpu.sbatch 500    # GStatSim may not finish: its rate is in the log
+```
+
 Handy: `slurmInfo` (group resources), `blue_quota`, `home_quota`.
 
 Results land in `results/hpg/` (`speed_hpg_l4_<jobid>.json` plus the environment
