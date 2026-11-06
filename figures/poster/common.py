@@ -19,6 +19,15 @@ RESULTS = ROOT / "results" / "poster"
 # Speed numbers on the poster: the HiPerGator L4 run (GStatSim on the same node's CPU).
 # The laptop run is results/poster/speed.json.
 SPEED = ROOT / "docs" / "hpg" / "speed_hpg_l4.json"
+# Large region (Amundsen Sea Embayment: Thwaites + Pine Island), HiPerGator runs of
+# benchmarks/bench_region.py: GPU on the L4 node, GStatSim on burst CPU nodes.
+REGION = {
+    1000: [ROOT / "docs" / "hpg" / f for f in
+           ("region_ase_1000m_gpu_49850615.json", "region_ase_1000m_cpu_49850617.json")],
+    500: [ROOT / "docs" / "hpg" / f for f in
+          ("region_ase_500m_gpu_49850616.json", "region_ase_500m_cpu_49850618.json",
+           "region_ase_500m_cpu_49873080.json")],
+}
 
 # Poster grid: 4 columns between 0.75 in margins and 0.5 in gutters
 COL_W = 8.25          # in

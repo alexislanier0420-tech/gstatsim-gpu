@@ -1,6 +1,6 @@
 // Builds the 36 x 24 in landscape poster (figures/poster/poster.pptx) from the
-// figure PNGs and the speed record (docs/hpg/speed_hpg_l4.json, the HiPerGator L4 run;
-// the laptop run is results/poster/speed.json). Run from the repo root:
+// figure PNGs and the large-region speed records (docs/hpg/region_ase_500m_*.json, the
+// HiPerGator runs of benchmarks/bench_region.py). Run from the repo root:
 //   node figures/poster/build_poster.js
 // (needs pptxgenjs: npm install pptxgenjs, or NODE_PATH pointing at it)
 const fs = require("fs");
@@ -10,13 +10,12 @@ const pptxgen = require("pptxgenjs");
 const HERE = __dirname;
 const ROOT = path.resolve(HERE, "..", "..");
 const img = (name) => path.join(HERE, name);
-const speed = JSON.parse(fs.readFileSync(path.join(ROOT, "docs", "hpg", "speed_hpg_l4.json"), "utf8"));
-const W = Object.fromEntries(speed.workloads.map((w) => [w.label.split(" ")[0] + "_" + w.label.split("· ")[1], w]));
-const krig = W["Kriging_Tutorial 3"];
-const sgsR = W["SGS_Rubble Glacier"];
-const xKrig = Math.round(krig.gstatsim_s / krig.gpu_s);
-const xSgsMany = Math.round(sgsR.gstatsim_s / sgsR.gpu_per_realization_32_s);
-const xSgsOne = Math.round(sgsR.gstatsim_s / sgsR.gpu_s);
+// Headline numbers: the large region (Amundsen Sea Embayment) at 500 m, 1,153,419 cells
+const ase = Object.assign({}, ...["region_ase_500m_gpu_49850616.json", "region_ase_500m_cpu_49850618.json",
+  "region_ase_500m_cpu_49873080.json"].map((f) =>
+  JSON.parse(fs.readFileSync(path.join(ROOT, "docs", "hpg", f), "utf8")).steps));
+const xKrig = Math.round(ase.gstatsim_kriging.seconds / ase.gpu_kriging.seconds);
+const xSgsMany = Math.round(ase.gstatsim_sgs_x1.seconds / ase.gpu_sgs_x32.seconds_per_realization);
 
 // Colors (match the figures): glacier navy, GPU blue, CPU orange, inks
 const NAVY = "16324F", BLUE = "2A78D6", ORANGE = "EB6834", INK = "0B0B0B", INK2 = "52514E", MUTED = "898781";
@@ -111,8 +110,8 @@ function speedAspect() {
 const FY = 21.55;
 s.addShape(pres.shapes.LINE, { x: M, y: FY - 0.2, w: 36 - 2 * M, h: 0, line: { color: "E1E0D9", width: 1.5 } });
 const stats = [
-  [`${xKrig}×`, "faster kriging"],
-  [`${xSgsMany}×`, "faster simulation\n(per realization, 32 at once)"],
+  [`${xKrig}×`, "faster kriging, 1.15 million\ncells (Amundsen, 500 m)"],
+  [`${xSgsMany}×`, "faster simulation, same grid\n(per realization, 32 at once)"],
   ["92%", "of kriged cells identical to\nGStatSim (rest: tied neighbors)"],
   ["7", "GStatSim book chapters\nnow run on the GPU"],
 ];
