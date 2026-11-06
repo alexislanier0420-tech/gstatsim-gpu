@@ -40,6 +40,9 @@ def main(argv=None) -> int:
                    help="GPU part: realizations stepped together, one SGS run per value")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--max-nodes", type=int, help="time only the first N nodes (smoke test)")
+    p.add_argument("--only", nargs="+", metavar="STEP",
+                   help="run only these steps, e.g. --only gstatsim_sgs_x1 (CPU part: numpy_kriging, "
+                        "gstatsim_kriging, numpy_sgs_x1, gstatsim_sgs_x1)")
     a = p.parse_args(argv)
 
     t = time.perf_counter()
@@ -59,6 +62,8 @@ def main(argv=None) -> int:
         a.out.write_text(json.dumps(out, indent=2, default=str))
 
     def step(name, fn, sync=False, realizations=None):
+        if a.only and name not in a.only:
+            return
         print(f"{name} ...", flush=True)
         if sync:
             import cupy as cp
