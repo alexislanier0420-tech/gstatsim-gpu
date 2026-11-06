@@ -6,7 +6,6 @@ from __future__ import annotations
 import json
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 from common import COL_W, CPU, GPU, INK, INK2, MUTED, REGION, SPEED, save, style
 
@@ -30,8 +29,7 @@ def region_rows(res):
 rubble = [r for r in sp["workloads"] if "Rubble" in r["label"]]
 rows = (rubble + region_rows(1000) + region_rows(500))[::-1]   # first workload on top
 
-fig, (a, b) = plt.subplots(2, 1, figsize=(COL_W, COL_W * 1.25),
-                           gridspec_kw=dict(height_ratios=[1.75, 1], hspace=0.45))
+fig, a = plt.subplots(figsize=(COL_W, COL_W * 0.64))
 
 
 def fmt(s):
@@ -73,27 +71,7 @@ handles = [plt.Line2D([], [], marker="o", ls="", ms=12, color=CPU, label="GStatS
 a.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.42, -0.07), ncol=3, fontsize=14,
          handletextpad=0.3, columnspacing=1.0)
 
-# --- (b) SGS: time per realization vs. how many run side by side
-sc = {int(k): v for k, v in sp["scaling"].items()}
-S = np.array(sorted(sc))
-t = np.array([sc[s] for s in S])
-gst = next(r["gstatsim_s"] for r in sp["workloads"] if r["label"].startswith("SGS · Rubble"))
-b.axhline(gst, color=CPU, lw=2.5)
-b.text(S[-1], gst / 1.25, f"GStatSim: {fmt(gst)} each", color=INK, ha="right", va="top", fontsize=16)
-b.plot(S, t, "-o", color=GPU, lw=3, ms=9, markeredgecolor="white", markeredgewidth=1.5)
-b.text(S[-1] * 1.08, t[-1], f"{fmt(t[-1])} each\n({gst / t[-1]:.0f}× faster)", color=INK, va="center",
-       fontsize=16)
-b.set_xscale("log", base=2)
-b.set_yscale("log")
-b.set_xticks(S, [str(s) for s in S])
-b.set_yticks([1, 10, 100], ["1 s", "10 s", "100 s"])
-b.set_ylim(min(0.45, t.min() / 1.6), gst * 1.6)
-b.set_xlim(S[0] / 1.3, S[-1] * 4.5)
-b.grid(True, axis="y", which="major")
-b.set_xlabel("Realizations simulated side by side")
-b.set_ylabel("Seconds per\nrealization")
-b.set_title("Rubble Glacier SGS: more realizations, less time each", fontsize=18, color=INK, loc="left")
-fig.text(0.0, 0.0, "Amundsen: Amundsen Sea Embayment (Thwaites + Pine Island), a 650 × 700 km box.\n"
+fig.text(0.0, -0.06, "Amundsen: Amundsen Sea Embayment (Thwaites + Pine Island), a 650 × 700 km box.\n"
          "GPU: NVIDIA L4 (24 GB) on an AMD EPYC 9655P node. GStatSim: 4 cores of the same node\n"
          "for Rubble, older EPYC 7702 / 75F3 nodes for Amundsen. GPU times exclude start-up.",
          fontsize=12, color=MUTED, va="top")

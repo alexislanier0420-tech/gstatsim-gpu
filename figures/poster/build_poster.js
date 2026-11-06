@@ -98,11 +98,14 @@ caption(2, "Left: spread of the 20 realizations, near zero along radar lines. Ri
 heading(3, 4, "Same answers, much faster", TOP);
 let y4 = figure(3, "validation.png", TOP + 1.0, 0.631, "GPU vs GStatSim agreement");
 caption(3, "Left: kriging matches GStatSim cell by cell; the rest are \"tied\" cells, where two data points are equally far away and GStatSim's pick is arbitrary. Right: SGS ensembles agree as closely as two GStatSim ensembles do.", y4 + 0.1, 1.3);
-y4 = figure(3, "speed.png", y4 + 1.5, speedAspect(), "Run times, GStatSim vs GPU");
+y4 = figure(3, "amundsen.png", y4 + 1.15, pngAspect("amundsen.png"),
+  "Kriged bed of the Amundsen Sea Embayment, Thwaites and Pine Island glaciers");
+y4 = figure(3, "speed.png", y4 + 0.15, pngAspect("speed.png"), "Run times, GStatSim vs GPU");
+console.log(`column 4 ends at ${y4.toFixed(2)} in (footer rule at 21.35)`);
 
-function speedAspect() {
+function pngAspect(name) {
   // read the PNG header for its size
-  const b = fs.readFileSync(img("speed.png"));
+  const b = fs.readFileSync(img(name));
   return b.readUInt32BE(20) / b.readUInt32BE(16);
 }
 
