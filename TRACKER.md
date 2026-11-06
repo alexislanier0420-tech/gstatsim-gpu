@@ -31,7 +31,7 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 ### Phase 3: Validate & deliver (Nov 16 – 20)
 - [ ] Benchmarks across sizes, incl. cases where GPU is slower; memory + transfer costs
 - [ ] Report, setup guide, demo notebook, expansion roadmap
-- [ ] Copy all cited results off HiPerGator (no backups; course accounts deleted at semester end) — 11-03 L4 benchmark copied to `results/hpg/`
+- [ ] Copy all cited results off HiPerGator (no backups; course accounts deleted at semester end) — 11-03 L4 benchmark and 11-05/06 ASE region runs copied to `docs/hpg/`
 - [ ] Buffer Nov 21 – 30 for the class deadline
 
 ## Upstream contributions
@@ -145,6 +145,14 @@ When #30 is released: drop the `numpy<2.4` cap in pyproject.toml.
 | 11-03 | HPG L4 | Rubble kriging, 1 km | NumPy (ours) | 40,000 | 13.8 s | 0.35 ms | = GPU | same record; GStatSim 100.3 s, GPU 1.74 s → **GPU 7.9× vs NumPy** |
 | 11-03 | HPG L4 | Tut3 SGS | NumPy (ours), 1 realization | 22,500 | 27.0 s | 1.2 ms | = GPU | same record; GPU 17.4 s alone (1.6×), 0.55 s each with 32 (**50×**) |
 | 11-03 | HPG L4 | Rubble SGS | NumPy (ours), 1 realization | 30,750 | 52.5 s | 1.7 ms | = GPU | same record; GPU 20.7 s alone (2.5×), 0.65 s each with 32 (**81×**; ~20× if NumPy ran 4 realizations on the 4 cores) |
+| 11-05 | HPG L4 (CPU: EPYC 9655P, 4 cores) | ASE (Thwaites + PIG) kriging, 1 km, 91,623 data | gpu | 288,851 | **22.1 s** | 0.077 ms | — | `docs/hpg/region_ase_1000m_gpu_49850615.json` |
+| 11-05 | HPG L4 | ASE SGS, 1 km | gpu, 1 alone / 32 / 64 together | 288,851 | 519.5 s / 16.4 s / **15.2 s per realization** | — | — | same record |
+| 11-05 | HPG CPU (EPYC 7702, 4 cores) | ASE kriging, 1 km | GStatSim 1.2.0 / NumPy (ours) | 288,851 | 3,128 s / 295 s | 10.8 / 1.0 ms | reference | `docs/hpg/region_ase_1000m_cpu_49850617.json`; **GPU 142× vs GStatSim, 13× vs NumPy** |
+| 11-05 | HPG CPU (EPYC 7702) | ASE SGS, 1 km | GStatSim 1.2.0 / NumPy (ours), 1 realization | 288,851 | 4,510 s / 7,458 s | 15.6 / 25.8 ms | reference | same record; NumPy SGS **slower than GStatSim** at this size; GPU 8.7× alone, **297× per realization with 64** |
+| 11-05 | HPG L4 (CPU: EPYC 9655P) | ASE kriging, 500 m, 210,813 data | gpu | 1,153,419 | **105.4 s** | 0.091 ms | — | `docs/hpg/region_ase_500m_gpu_49850616.json` |
+| 11-05 | HPG L4 | ASE SGS, 500 m | gpu, 32 together | 1,153,419 | **247 s per realization** | — | — | same record; 7,906 s for all 32 |
+| 11-05 | HPG CPU (EPYC 7702) | ASE kriging, 500 m | GStatSim 1.2.0 / NumPy (ours) | 1,153,419 | 17,037 s / 1,751 s | 14.8 / 1.5 ms | reference | `docs/hpg/region_ase_500m_cpu_49850618.json` (cancelled before NumPy SGS); **GPU 162× vs GStatSim, 17× vs NumPy** |
+| 11-06 | HPG CPU (EPYC 75F3, 4 cores) | ASE SGS, 500 m | GStatSim 1.2.0, 1 realization | 1,153,419 | 34,856 s (9.7 h) | 30.2 ms | reference | `docs/hpg/region_ase_500m_cpu_49873080.json`; **GPU 141× per realization with 32** |
 
 ## Risks to watch
 - Data: `glacier_lab1.nc` may still hold the Marie Byrd Land crop; check extent before using lab outputs.
@@ -158,3 +166,5 @@ When #30 is released: drop the `numpy<2.4` cap in pyproject.toml.
   **Measured 11-03 (HPG L4):** kriging is 7.9× faster on the GPU than our NumPy version, which is itself
   7–12× faster than GStatSim. SGS: 1.6–2.5× for one realization, 50–81× with 32 at once (NumPy ran one
   realization on one core; ~4× less if it used all 4). Report these alongside the GStatSim speedups.
+- Large-region CPU jobs ran on older nodes (EPYC 7702 / 75F3) than the GPU node (EPYC 9655P);
+  burst QOS can't pick the node. Say so in captions.

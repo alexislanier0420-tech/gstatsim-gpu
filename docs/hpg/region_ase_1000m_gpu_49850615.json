@@ -1,0 +1,84 @@
+{
+  "environment": {
+    "os": "Linux-5.14.0-687.39.1.el9_8.x86_64-x86_64-with-glibc2.34",
+    "python": "3.12.16",
+    "cpu_model": "AMD EPYC 9655P 96-Core Processor",
+    "cpu_count_logical": 96,
+    "ram_bytes": 810704015360,
+    "nvidia_smi": [
+      {
+        "name": "NVIDIA L4",
+        "memory_mib": 23034,
+        "driver": "580.178.04",
+        "compute_capability": "8.9"
+      }
+    ],
+    "cupy_gpu": {
+      "available": true,
+      "reason": "ok",
+      "device_name": "NVIDIA L4",
+      "compute_capability": "8.9",
+      "total_memory_bytes": 23659151360,
+      "cuda_runtime_version": 12090,
+      "cupy_version": "14.2.0"
+    },
+    "packages": {
+      "gstatsim": "1.2.0",
+      "gstatsim-accel": "0.1.0",
+      "numpy": "2.2.6",
+      "scipy": "1.15.2",
+      "pandas": "2.2.3",
+      "scikit-learn": "1.6.1",
+      "cupy-cuda12x": "14.2.0",
+      "psutil": "7.2.2"
+    },
+    "slurm": {
+      "SLURM_JOB_ID": "49850615",
+      "SLURM_JOB_PARTITION": "hpg-turin",
+      "SLURM_CPUS_PER_TASK": "4",
+      "SLURM_GPUS": "l4:1",
+      "SLURM_JOB_GPUS": "2",
+      "SLURM_MEM_PER_NODE": "32768"
+    }
+  },
+  "region": "ase",
+  "res_m": 1000.0,
+  "part": "gpu",
+  "n_conditioning": 91623,
+  "n_nodes": 288851,
+  "variogram": [
+    0.0,
+    0.0,
+    30614.69892772817,
+    30614.69892772817,
+    1.0088802157877481,
+    "Exponential"
+  ],
+  "num_points": 100,
+  "radius": 50000,
+  "prepare_s": 12.572295823134482,
+  "steps": {
+    "gpu_kriging": {
+      "seconds": 22.145082220435143,
+      "ms_per_node": 0.07666610889501903
+    },
+    "gpu_sgs_x1": {
+      "seconds": 519.5153854303062,
+      "ms_per_node": 1.7985583758765114,
+      "realizations": 1,
+      "seconds_per_realization": 519.5153854303062
+    },
+    "gpu_sgs_x32": {
+      "seconds": 523.3415901595727,
+      "ms_per_node": 1.8118046680107482,
+      "realizations": 32,
+      "seconds_per_realization": 16.354424692486646
+    },
+    "gpu_sgs_x64": {
+      "seconds": 974.1871770434082,
+      "ms_per_node": 3.372628715300997,
+      "realizations": 64,
+      "seconds_per_realization": 15.221674641303252
+    }
+  }
+}

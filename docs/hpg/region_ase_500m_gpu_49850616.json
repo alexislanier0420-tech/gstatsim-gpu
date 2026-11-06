@@ -1,0 +1,72 @@
+{
+  "environment": {
+    "os": "Linux-5.14.0-687.39.1.el9_8.x86_64-x86_64-with-glibc2.34",
+    "python": "3.12.16",
+    "cpu_model": "AMD EPYC 9655P 96-Core Processor",
+    "cpu_count_logical": 96,
+    "ram_bytes": 810704015360,
+    "nvidia_smi": [
+      {
+        "name": "NVIDIA L4",
+        "memory_mib": 23034,
+        "driver": "580.178.04",
+        "compute_capability": "8.9"
+      }
+    ],
+    "cupy_gpu": {
+      "available": true,
+      "reason": "ok",
+      "device_name": "NVIDIA L4",
+      "compute_capability": "8.9",
+      "total_memory_bytes": 23659151360,
+      "cuda_runtime_version": 12090,
+      "cupy_version": "14.2.0"
+    },
+    "packages": {
+      "gstatsim": "1.2.0",
+      "gstatsim-accel": "0.1.0",
+      "numpy": "2.2.6",
+      "scipy": "1.15.2",
+      "pandas": "2.2.3",
+      "scikit-learn": "1.6.1",
+      "cupy-cuda12x": "14.2.0",
+      "psutil": "7.2.2"
+    },
+    "slurm": {
+      "SLURM_JOB_ID": "49850616",
+      "SLURM_JOB_PARTITION": "hpg-turin",
+      "SLURM_CPUS_PER_TASK": "4",
+      "SLURM_GPUS": "l4:1",
+      "SLURM_JOB_GPUS": "2",
+      "SLURM_MEM_PER_NODE": "32768"
+    }
+  },
+  "region": "ase",
+  "res_m": 500.0,
+  "part": "gpu",
+  "n_conditioning": 210813,
+  "n_nodes": 1153419,
+  "variogram": [
+    0.0,
+    0.0,
+    31885.529592904288,
+    31885.529592904288,
+    0.9904774565357007,
+    "Exponential"
+  ],
+  "num_points": 100,
+  "radius": 50000,
+  "prepare_s": 12.87287703435868,
+  "steps": {
+    "gpu_kriging": {
+      "seconds": 105.40529378131032,
+      "ms_per_node": 0.09138508536907258
+    },
+    "gpu_sgs_x32": {
+      "seconds": 7905.777906225994,
+      "ms_per_node": 6.854211614535563,
+      "realizations": 32,
+      "seconds_per_realization": 247.05555956956232
+    }
+  }
+}

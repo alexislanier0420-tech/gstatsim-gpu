@@ -1,0 +1,61 @@
+{
+  "environment": {
+    "os": "Linux-5.14.0-687.39.1.el9_8.x86_64-x86_64-with-glibc2.34",
+    "python": "3.12.16",
+    "cpu_model": "AMD EPYC 7702 64-Core Processor",
+    "cpu_count_logical": 128,
+    "ram_bytes": 1081480814592,
+    "nvidia_smi": null,
+    "cupy_gpu": {
+      "available": false,
+      "reason": "CuPy is installed but no CUDA device is usable (cudaErrorInsufficientDriver: CUDA driver version is insufficient for CUDA runtime version). Check the NVIDIA driver, or that the job was given a GPU (e.g. SLURM --gpus=1).",
+      "device_name": null,
+      "compute_capability": null,
+      "total_memory_bytes": null,
+      "cuda_runtime_version": null,
+      "cupy_version": "14.2.0"
+    },
+    "packages": {
+      "gstatsim": "1.2.0",
+      "gstatsim-accel": "0.1.0",
+      "numpy": "2.2.6",
+      "scipy": "1.15.2",
+      "pandas": "2.2.3",
+      "scikit-learn": "1.6.1",
+      "cupy-cuda12x": "14.2.0",
+      "psutil": "7.2.2"
+    },
+    "slurm": {
+      "SLURM_JOB_ID": "49850618",
+      "SLURM_JOB_PARTITION": "hpg-default",
+      "SLURM_CPUS_PER_TASK": "4",
+      "SLURM_MEM_PER_NODE": "32768"
+    }
+  },
+  "region": "ase",
+  "res_m": 500.0,
+  "part": "cpu",
+  "n_conditioning": 210813,
+  "n_nodes": 1153419,
+  "variogram": [
+    0.0,
+    0.0,
+    31885.529623242135,
+    31885.529623242135,
+    0.9904774567582018,
+    "Exponential"
+  ],
+  "num_points": 100,
+  "radius": 50000,
+  "prepare_s": 23.142197515815496,
+  "steps": {
+    "numpy_kriging": {
+      "seconds": 1750.7354236701503,
+      "ms_per_node": 1.517865947821347
+    },
+    "gstatsim_kriging": {
+      "seconds": 17037.255816812627,
+      "ms_per_node": 14.771089965409471
+    }
+  }
+}
