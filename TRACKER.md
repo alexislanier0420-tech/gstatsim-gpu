@@ -37,7 +37,8 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 ## Upstream contributions
 | Date | Pull request | What | Status |
 |---|---|---|---|
-| 10-30 | [GStatSim#30](https://github.com/GatorGlaciology/GStatSim/pull/30) | SGS fails on NumPy ≥ 2.4 (`rng.normal(..., 1)`); 4 lines, bit-identical | merged 10-30, not yet released (PyPI 1.2.0 on 11-03) |
+| 10-30 | [GStatSim#30](https://github.com/GatorGlaciology/GStatSim/pull/30) | SGS fails on NumPy ≥ 2.4 (`rng.normal(..., 1)`); 4 lines, bit-identical | merged 10-30, released in 1.2.1 (11-04) |
+| 11-06 | [GStatSim#31](https://github.com/GatorGlaciology/GStatSim/pull/31) | `rbf_trend` wrong for non-square grids (evaluated on a transposed meshgrid); 3 lines + test, square grids bit-identical | open |
 | 10-30 | [gstatsimbook#7](https://github.com/GatorGlaciology/gstatsimbook/pull/7) | Chapters 3–9 missing variogram model type; 13 lines, all chapters run | open |
 
 When #30 is released: drop the `numpy<2.4` cap in pyproject.toml.
