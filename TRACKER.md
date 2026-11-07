@@ -41,7 +41,7 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 | 11-06 | [GStatSim#31](https://github.com/GatorGlaciology/GStatSim/pull/31) | `rbf_trend` wrong for non-square grids (evaluated on a transposed meshgrid); 3 lines + test, square grids bit-identical | open |
 | 10-30 | [gstatsimbook#7](https://github.com/GatorGlaciology/gstatsimbook/pull/7) | Chapters 3–9 missing variogram model type; 13 lines, all chapters run | open |
 
-When #30 is released: drop the `numpy<2.4` cap in pyproject.toml.
+#30 released in 1.2.1 (11-04): `numpy<2.4` cap dropped, gstatsim>=1.2.1 (11-06).
 
 ## Open questions
 | Question | For | Status |

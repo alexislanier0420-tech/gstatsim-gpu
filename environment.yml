@@ -20,7 +20,7 @@ dependencies:
   - nbconvert
   - pip
   - pip:
-      - gstatsim==1.2.0  # 1.2.0 fixes the spherical model and puts the nugget on the kriging diagonal
+      - gstatsim==1.2.1  # 1.2.0 fixes the spherical model and the nugget; 1.2.1 runs SGS on NumPy >= 2.4
       - scikit-gstat
       - -e .
       # GPU: CuPy plus the CUDA libraries it loads (cuBLAS, cuSOLVER...).
