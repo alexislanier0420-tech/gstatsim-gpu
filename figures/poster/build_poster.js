@@ -1,4 +1,4 @@
-// Builds the 36 x 24 in landscape poster (figures/poster/poster.pptx) from the
+// Builds the 48 x 36 in landscape poster (figures/poster/poster.pptx) from the
 // figure PNGs and the large-region speed records (docs/hpg/region_ase_500m_*.json, the
 // HiPerGator runs of benchmarks/bench_region.py). Run from the repo root:
 //   node figures/poster/build_poster.js
@@ -23,13 +23,28 @@ const TINT = "F3F2EF";
 const FONT = "Segoe UI";
 
 const pres = new pptxgen();
-pres.defineLayout({ name: "POSTER_36x24", width: 36, height: 24 });
-pres.layout = "POSTER_36x24";
+// The class asks for ~48 x 36 in landscape. The layout below is written in a
+// 36 x 27 frame and scaled by K = 4/3 (positions, sizes, fonts, line widths).
+const K = 4 / 3;
+pres.defineLayout({ name: "POSTER_48x36", width: 48, height: 36 });
+pres.layout = "POSTER_48x36";
 pres.title = "GPU-accelerated geostatistics for Antarctic bed topography";
 pres.author = "Alexis McGill";
 pres.theme = { headFontFace: FONT, bodyFontFace: FONT };
-const s = pres.addSlide();
-s.background = { color: "FFFFFF" };
+const slide = pres.addSlide();
+slide.background = { color: "FFFFFF" };
+function scaled(o) {
+  const r = { ...o };
+  for (const key of ["x", "y", "w", "h"]) if (typeof r[key] === "number") r[key] *= K;
+  for (const key of ["fontSize", "paraSpaceAfter"]) if (r[key]) r[key] = Math.round(r[key] * K);
+  if (r.line && r.line.width) r.line = { ...r.line, width: r.line.width * K };
+  return r;
+}
+const s = {
+  addText: (t, o) => slide.addText(t, scaled(o)),
+  addImage: (o) => slide.addImage(scaled(o)),
+  addShape: (shape, o) => slide.addShape(shape, scaled(o)),
+};
 
 const M = 0.75, GUT = 0.5, COL = 8.25;
 const colX = (i) => M + i * (COL + GUT);
@@ -97,11 +112,35 @@ caption(2, "Left: spread of the 20 realizations, near zero along radar lines. Ri
 // 4 · Is it right? How fast?
 heading(3, 4, "Same answers, much faster", TOP);
 let y4 = figure(3, "validation.png", TOP + 1.0, 0.631, "GPU vs GStatSim agreement");
-caption(3, "Left: kriging matches GStatSim cell by cell; the rest are \"tied\" cells, where two data points are equally far away and GStatSim's pick is arbitrary. Right: SGS ensembles agree as closely as two GStatSim ensembles do.", y4 + 0.1, 1.3);
+caption(3, "Left: 92% of cells match to rounding; 8% are \"tied\" cells (two data points equally far), where GStatSim's pick depends on the CPU. Right: SGS ensembles agree as closely as two GStatSim ensembles do.", y4 + 0.1, 1.3);
 y4 = figure(3, "amundsen.png", y4 + 1.15, pngAspect("amundsen.png"),
   "Kriged bed of the Amundsen Sea Embayment, Thwaites and Pine Island glaciers");
 y4 = figure(3, "speed.png", y4 + 0.15, pngAspect("speed.png"), "Run times, GStatSim vs GPU");
-console.log(`column 4 ends at ${y4.toFixed(2)} in (footer rule at 21.35)`);
+console.log(`column 4 ends at ${y4.toFixed(2)} (frame units; conclusions band at 21.55)`);
+
+// 5 · Conclusions & next steps (full-width band)
+const CY = 21.55, CH = 2.75;
+s.addShape(pres.shapes.RECTANGLE, { x: M, y: CY, w: 36 - 2 * M, h: CH, fill: { color: TINT }, line: { color: TINT } });
+s.addShape(pres.shapes.OVAL, { x: M + 0.3, y: CY + 0.3, w: 0.72, h: 0.72, fill: { color: NAVY }, line: { color: NAVY } });
+text("5", { x: M + 0.3, y: CY + 0.3, w: 0.72, h: 0.72, fontSize: 30, bold: true, color: "FFFFFF", align: "center", valign: "middle" });
+text("Conclusions & next steps", { x: M + 1.22, y: CY + 0.28, w: 12, h: 0.76, fontSize: 34, bold: true, color: NAVY, valign: "middle" });
+const findings = [
+  ["The bigger the map, the bigger the win.",
+    "Rubble Glacier kriging is 62× faster; the 1.15-million-cell Amundsen grid is 162×. A map that took GStatSim 4.7 h takes under 2 min."],
+  ["Exact SGS is worth keeping.",
+    "Simulating the whole grid at once is easier on a GPU but makes the bed 39% rougher than the data support. One GPU block per realization keeps GStatSim's exact algorithm."],
+  ["Ties can match exactly too.",
+    "With a stable sort in GStatSim's neighbor search, every tested cell and SGS node matches to 1e-14 (was 8% / 20% differing), and GStatSim gives the same answer on every CPU."],
+  ["Next: into GStatSim.",
+    "gstatsim_gpu.py + GPU tutorials go to GStatSim and the GStatSim Jupyter Book; stable-sort fix proposed upstream; large-region GPU vs CPU tutorial."],
+];
+const FW = (36 - 2 * M - 0.6 - 3 * 0.5) / 4;
+findings.forEach(([head, body], k) => {
+  text([
+    { text: head, options: { bold: true, color: k < 3 ? INK : BLUE, breakLine: true } },
+    { text: body, options: { color: INK2 } },
+  ], { x: M + 0.3 + k * (FW + 0.5), y: CY + 1.2, w: FW, h: CH - 1.35, fontSize: 20, valign: "top", paraSpaceAfter: 4 });
+});
 
 function pngAspect(name) {
   // read the PNG header for its size
@@ -110,12 +149,12 @@ function pngAspect(name) {
 }
 
 // ------------------------------------------------------------------ footer
-const FY = 21.55;
+const FY = 24.75;
 s.addShape(pres.shapes.LINE, { x: M, y: FY - 0.2, w: 36 - 2 * M, h: 0, line: { color: "E1E0D9", width: 1.5 } });
 const stats = [
   [`${xKrig}×`, "faster kriging, 1.15 million\ncells (Amundsen, 500 m)"],
   [`${xSgsMany}×`, "faster simulation, same grid\n(per realization, 32 at once)"],
-  ["92%", "of kriged cells identical to\nGStatSim (rest: tied neighbors)"],
+  ["1e-14", "largest difference from GStatSim\nwith a stable sort (proposed fix)"],
   ["7", "GStatSim book chapters\nnow run on the GPU"],
 ];
 stats.forEach(([big, small], k) => {
@@ -127,7 +166,7 @@ text([
   { text: "References  ", options: { bold: true, color: INK } },
   { text: "MacKie et al. (2023) GStatSim V1.0, Geosci. Model Dev. 16, 3765–3783 · Morlighem (2022) BedMachine Antarctica v3, NSIDC · Pritchard et al. (2025) Bedmap3, Sci. Data 12, 414 · Okuta et al. (2017) CuPy, LearningSys/NeurIPS.", options: { color: INK2, breakLine: true } },
   { text: "Upstream fixes  ", options: { bold: true, color: INK } },
-  { text: "GatorGlaciology/GStatSim#30 (SGS on NumPy ≥ 2.4) · gstatsimbook#7 (chapters 3–9). Computing: UFIT Research Computing, HiPerGator (NVIDIA L4); development on a laptop RTX 5060.", options: { color: INK2 } },
+  { text: "GatorGlaciology/GStatSim#30 (SGS on NumPy ≥ 2.4, in 1.2.1) · #31 (rbf_trend on non-square grids) · gstatsimbook#7 (chapters 3–9). Computing: UFIT Research Computing, HiPerGator (NVIDIA L4); development on a laptop RTX 5060.", options: { color: INK2 } },
 ], { x: 19.4, y: FY, w: 12.6, h: 1.9, fontSize: 14, valign: "top", paraSpaceAfter: 6 });
 s.addImage({ path: img("qr_repo.png"), x: 32.95, y: FY - 0.05, w: 1.6, h: 1.6, altText: "QR code linking to the GitHub repository" });
 text("Code & notebooks", { x: 32.4, y: FY + 1.58, w: 2.7, h: 0.4, fontSize: 13, color: INK2, align: "center" });

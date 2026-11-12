@@ -38,7 +38,8 @@ Budget 5–10 h/week. Plan: *Gator Glaciology GPU System Design RFC* and *Implem
 | Date | Pull request | What | Status |
 |---|---|---|---|
 | 10-30 | [GStatSim#30](https://github.com/GatorGlaciology/GStatSim/pull/30) | SGS fails on NumPy ≥ 2.4 (`rng.normal(..., 1)`); 4 lines, bit-identical | merged 10-30, released in 1.2.1 (11-04) |
-| 11-06 | [GStatSim#31](https://github.com/GatorGlaciology/GStatSim/pull/31) | `rbf_trend` wrong for non-square grids (evaluated on a transposed meshgrid); 3 lines + test, square grids bit-identical | open |
+| 11-06 | [GStatSim#31](https://github.com/GatorGlaciology/GStatSim/pull/31) | `rbf_trend` wrong for non-square grids (evaluated on a transposed meshgrid); 3 lines + test, square grids bit-identical | merged 11-10 |
+| 11-11 | [GStatSim#32](https://github.com/GatorGlaciology/GStatSim/pull/32) | Neighbor search used an unstable sort, so tied neighbors (and results) depended on the CPU; CI had failed since 1.2.0. `kind="mergesort"` ×3 + 12 test values; makes GPU match exactly | open, CI green |
 | 10-30 | [gstatsimbook#7](https://github.com/GatorGlaciology/gstatsimbook/pull/7) | Chapters 3–9 missing variogram model type; 13 lines, all chapters run | open |
 
 #30 released in 1.2.1 (11-04): `numpy<2.4` cap dropped, gstatsim>=1.2.1 (11-06).
