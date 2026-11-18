@@ -47,7 +47,7 @@ Slurm CPUs for this job: 4
 | SLURM_JOB_GPUS | 2 |
 | SLURM_MEM_PER_NODE | 32768 |
 
-Saved /blue/gly4930/amcgill/gstatsim-gpu/results/hpg/20261103T200245Z_hpg-l4.json and .md
+Saved /blue/gly4930/<user>/gstatsim-gpu/results/hpg/20261103T200245Z_hpg-l4.json and .md
 Matplotlib is building the font cache; this may take a moment.
 Kriging · Tutorial 3 (22,500 cells)
     {'label': 'Kriging · Tutorial 3', 'cells': 22500, 'gstatsim_s': 65.974, 'gpu_s': 0.682}
@@ -64,4 +64,4 @@ SGS · Rubble Glacier (30,750 cells)
      16 side by side: 1.30 s per realization
      32 side by side: 0.65 s per realization
      64 side by side: 0.56 s per realization
-wrote /blue/gly4930/amcgill/gstatsim-gpu/results/hpg/speed_hpg_l4.json
+wrote /blue/gly4930/<user>/gstatsim-gpu/results/hpg/speed_hpg_l4.json
