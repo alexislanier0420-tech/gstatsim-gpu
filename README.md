@@ -110,6 +110,25 @@ matrix, Cholesky solve, sample) without returning to Python, and realizations ru
 as separate blocks at the same time. One realization is ~8× faster than GStatSim;
 many together are far faster. Full log: [TRACKER.md](TRACKER.md#benchmark-log).
 
+### 🌍 A large region: Thwaites and Pine Island (HiPerGator)
+
+The GPU pays off most on big maps, so we also mapped the bed of the Amundsen Sea
+Embayment: a 650 × 700 km box over Thwaites and Pine Island glaciers with 210,813
+radar measurements.
+
+![Kriged bed of the Amundsen Sea Embayment](figures/poster/amundsen.png)
+
+| Workload (one NVIDIA L4 vs. GStatSim on one CPU core) | GStatSim 1.2.0 | **GPU** |
+|---|---|---|
+| Ordinary kriging, 1 km grid | 3,128 s (52 min) | **22 s (142×)** |
+| Ordinary kriging, 500 m grid, 1.15 M cells | 17,037 s (4.7 h) | **105 s (162×)** |
+| SGS at 500 m, per realization | 34,856 s (9.7 h) | **247 s, 32 at once (141×)** |
+
+The CPU runs used older AMD EPYC 7702/75F3 nodes than the GPU node (EPYC 9655P +
+L4). Records and logs: [`docs/hpg/`](docs/hpg/). Workflow:
+[`notebooks/amundsen_large_region.ipynb`](notebooks/amundsen_large_region.ipynb)
+(draft).
+
 ### ✅ Does the GPU give the same answers?
 
 Yes, judged by criteria written down *before* any GPU result
@@ -210,10 +229,14 @@ Exact versions are in [environment.yml](environment.yml).
 
 ## 🔧 Upstream contributions
 
-Bugs found while building this project, fixed in the original repositories:
+The GPU code itself is being contributed to GStatSim, along with bugs found while
+building it:
 
-- [GatorGlaciology/GStatSim#30](https://github.com/GatorGlaciology/GStatSim/pull/30): GStatSim's four SGS functions fail on NumPy ≥ 2.4; 4-line fix, bit-identical results.
-- [GatorGlaciology/gstatsimbook#7](https://github.com/GatorGlaciology/gstatsimbook/pull/7): book chapters 3–9 fail on current GStatSim (missing variogram model type); all chapters tested.
+- [GatorGlaciology/GStatSim#33](https://github.com/GatorGlaciology/GStatSim/pull/33): **the GPU backend** as `gstatsim_gpu.py`, with tests and GPU versions of the GStatSim demos (open).
+- [GatorGlaciology/GStatSim#32](https://github.com/GatorGlaciology/GStatSim/pull/32): the neighbor search used an unstable sort, so results for tied neighbors depended on the CPU and upstream CI had failed since 1.2.0; with a stable sort the GPU matches GStatSim exactly (open).
+- [GatorGlaciology/GStatSim#31](https://github.com/GatorGlaciology/GStatSim/pull/31): `rbf_trend` was only correct for square grids (merged).
+- [GatorGlaciology/GStatSim#30](https://github.com/GatorGlaciology/GStatSim/pull/30): GStatSim's four SGS functions fail on NumPy ≥ 2.4; 4-line fix, bit-identical results (merged, released in 1.2.1).
+- [GatorGlaciology/gstatsimbook#7](https://github.com/GatorGlaciology/gstatsimbook/pull/7): book chapters 3–9 fail on current GStatSim (missing variogram model type); all chapters tested (open).
 
 ## 🙏 Acknowledgements and data
 
